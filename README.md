@@ -8,6 +8,8 @@ Source of truth: [V0 PRD (Google Doc)](https://docs.google.com/document/d/1KZRtQ
 
 Database contract: [`data-model/README.md`](data-model/README.md)
 
+Live app: **https://alongtable.vercel.app** (every push to `main` deploys automatically)
+
 ---
 
 ## Getting started
@@ -47,14 +49,13 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
 
 ### Done
 
-- **Phase 0, setup:** Next.js app, Supabase project, shared header, placeholder at `/`.
+- **Phase 0, setup:** Next.js app, Supabase project, shared header, placeholder at `/`, Vercel deploy with Supabase env vars.
 - **Phase 1, database:** `supabase/schema.sql` implements the data model and is live in Supabase.
 - **Phase 2, Restaurant Owner UI:** `/restaurant` and `/restaurant/new` read and write Supabase.
 - **Data functions** for Phases 3–5 are built and tested (see [Data functions](#data-functions-lib)).
 
-### Still open from Phases 0–2
+### Still open from Phase 2
 
-- [ ] **Deploy to Vercel:** link the repo, add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as environment variables, and confirm the restaurant pages work on the shared URL.
 - [ ] **R1 prefill:** prefill restaurant name and location on `/restaurant/new` from the seed restaurant (Il Nido), so both demo spaces share one restaurant (data model, "Publish").
 
 ### Phase 3: Regular User UI, creating events (≈3h)
@@ -151,7 +152,7 @@ Pages call these from Server Components or server actions. They are server-only.
 
 | Workstream | Phases |
 |---|---|
-| Backend / data | Vercel deploy, server actions for 3–4, then Phase 8 (AI) |
+| Backend / data | Server actions for 3–4, then Phase 8 (AI) |
 | Frontend: Restaurant UI | R1 prefill, then 6 |
 | Frontend: User UI | 3, 4, then 5 (landing) |
 | PM / QA | Demo script, landing page copy, Phase 7 checklist, Phase 8 |
