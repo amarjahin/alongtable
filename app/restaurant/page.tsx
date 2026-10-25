@@ -127,6 +127,11 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
           <p className="alt-lead alt-secondary">{detail}</p>
         </div>
         <div className="flex items-center gap-2">
+          {spaces.length > 0 && (
+            <ButtonLink href="/restaurant/insights" variant="quiet">
+              See insights
+            </ButtonLink>
+          )}
           <ButtonLink href="/restaurant/new">
             <Plus size={20} aria-hidden="true" />
             Publish a space

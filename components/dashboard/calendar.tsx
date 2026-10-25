@@ -66,10 +66,13 @@ export function Calendar({
                 const s = stats[key(d)];
                 const isToday = key(d) === todayKey;
                 const full = s && s.seats > 0 && s.guests >= s.seats;
+                const openOnly = s && s.spaces > 0 && s.events === 0;
                 const label = s
-                  ? `${plural(s.events, "event", "events")}, ${s.guests} of ${s.seats} seats booked, ${s.seats - s.guests} open`
+                  ? openOnly
+                    ? `${plural(s.spaces, "open space", "open spaces")}, not booked yet, ${s.seats} seats`
+                    : `${plural(s.events, "event", "events")}, ${s.guests} of ${s.seats} seats booked, ${s.seats - s.guests} open`
                   : "no spaces";
-                // Mint = a booked day (brand meaning); sunken = quiet.
+                // Mint = a booked day (brand meaning); sunken = quiet, with a dashed ring if a space is open but unbooked.
                 return (
                   <td
                     key={c}
@@ -92,6 +95,9 @@ export function Calendar({
                             <CalendarCheck size={14} aria-hidden="true" />
                             {s.events}
                           </span>
+                        )}
+                        {openOnly && (
+                          <span aria-hidden="true" className="mt-0.5 size-3 shrink-0 rounded-full border-2 border-dashed border-basil" />
                         )}
                       </div>
                       {s && s.seats > 0 && (
@@ -123,6 +129,9 @@ export function Calendar({
             <span className="block h-full w-1/2 bg-ink" />
           </span>
           Seats booked / total
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="inline-block size-3 rounded-full border-2 border-dashed border-basil" /> Open space, not booked yet
         </span>
       </p>
     </div>
