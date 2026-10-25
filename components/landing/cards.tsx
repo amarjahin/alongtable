@@ -36,11 +36,20 @@ function Cover({
   photoUrl?: string | null;
   alt: string;
 }) {
-  // A real photo of the restaurant when it has uploaded one; otherwise the typographic cover.
+  // With a photo, the same date or guest count sits on top in white. A flat dark tint (no gradient,
+  // per brand/DESIGN.md) keeps the white text readable on bright photos.
   if (photoUrl) {
     return (
-      <div className="relative aspect-[4/3] overflow-hidden rounded-photo bg-sunken">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-photo bg-sunken text-white">
         <Image src={photoUrl} alt={alt} fill sizes="272px" className="object-cover" />
+        <div className="absolute inset-0 bg-ink/55" aria-hidden="true" />
+        <div className="absolute inset-0 flex flex-col justify-between p-4">
+          <span className="alt-label-text uppercase tracking-wide">{top}</span>
+          <span className="flex items-baseline gap-2">
+            <span className="alt-hero">{big}</span>
+            <span className="text-[length:var(--alt-text-lead)] font-semibold">{small}</span>
+          </span>
+        </div>
       </div>
     );
   }

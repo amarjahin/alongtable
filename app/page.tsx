@@ -76,7 +76,7 @@ async function NextTable() {
   return (
     <div className="alt-card flex flex-col gap-5 !p-4">
       {photoUrl ? (
-        <div className="relative aspect-[16/9] overflow-hidden rounded-photo bg-sunken">
+        <div className="relative aspect-[16/9] overflow-hidden rounded-photo bg-sunken text-white">
           <Image
             src={photoUrl}
             alt={event.photoUrl ? event.title : `Inside ${event.restaurantName}`}
@@ -85,6 +85,14 @@ async function NextTable() {
             sizes="(min-width: 1024px) 480px, 100vw"
             className="object-cover"
           />
+          <div className="absolute inset-0 bg-ink/55" aria-hidden="true" />
+          <div className="absolute inset-0 flex items-end justify-between p-5">
+            <span className="flex items-baseline gap-3">
+              <span className="alt-hero">{p.day}</span>
+              <span className="alt-lead font-semibold">{p.month}</span>
+            </span>
+            <span className="alt-label-text uppercase tracking-wide">{p.weekday}</span>
+          </div>
         </div>
       ) : (
         <div className={`${c.bg} ${c.text} flex aspect-[16/9] items-end justify-between rounded-photo p-5`}>
