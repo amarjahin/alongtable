@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CalendarBlank, CheckCircle, Clock, HandWaving, Plus, Trash } from "@phosphor-icons/react/ssr";
+import { CalendarBlank, CheckCircle, Clock, MapPin, Plus, Trash } from "@phosphor-icons/react/ssr";
 import { Calendar } from "@/components/dashboard/calendar";
 import { GuestsChart } from "@/components/dashboard/guests-chart";
 import { ConfirmDelete } from "@/components/dashboard/confirm-delete";
@@ -46,24 +46,46 @@ function statusChip(s: Space) {
   return <Badge tone="booked">Booked</Badge>;
 }
 
+/** Signed out: what ALongTable does for a restaurant, with an example of what hosts see. */
+function OwnerWelcome() {
+  return (
+    <div className="flex flex-col items-center gap-12 lg:flex-row lg:py-8">
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-5">
+        <span className="alt-chip alt-chip--booked">For restaurants</span>
+        <h1 className="alt-display">Turn your empty tables into full ones.</h1>
+        <p className="alt-lead alt-secondary">
+          Publish the seats you want to fill. Hosts book them and bring the guests. No setup cost.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <ButtonLink href="/restaurant/signup">List your space</ButtonLink>
+          <ButtonLink href="/restaurant/signup" variant="quiet" className="!px-0 sm:!px-3">
+            Already registered? Sign in
+          </ButtonLink>
+        </div>
+      </div>
+
+      <article className="alt-card flex w-full max-w-md flex-col gap-4 !p-6 sm:!p-8" aria-label="Example of what hosts will see">
+        <span className="alt-chip alt-chip--info self-start">What hosts will see, for example</span>
+        <div className="flex flex-col gap-1">
+          <h2 className="alt-title">Your restaurant</h2>
+          <p className="alt-meta">
+            <MapPin size={20} aria-hidden="true" />
+            Your neighborhood · Tue · 6–9 PM
+          </p>
+        </div>
+        <SeatRow total={10} taken={6} pop />
+      </article>
+    </div>
+  );
+}
+
 async function Dashboard({ searchParams }: { searchParams: Params }) {
   const [{ published, registered, month: monthParam }, restaurant] = await Promise.all([
     searchParams,
     getCurrentRestaurant(),
   ]);
 
-  if (!restaurant) {
-    return (
-      <div className="alt-card mx-auto flex max-w-xl flex-col items-start gap-4 !p-8">
-        <HandWaving size={32} aria-hidden="true" />
-        <h1 className="alt-h2">List your space</h1>
-        <p className="alt-lead alt-secondary">
-          Tell us about your restaurant once. After that, publishing an empty table takes a few taps.
-        </p>
-        <ButtonLink href="/restaurant/signup">Register or sign in</ButtonLink>
-      </div>
-    );
-  }
+  if (!restaurant) return <OwnerWelcome />;
 
   await connection(); // the chart and calendar depend on today's date, so render per request
   const spaces = await listSpaces(restaurant.id);
