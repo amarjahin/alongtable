@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { CheckCircle, Info, MapPin, WarningCircle } from "@phosphor-icons/react/ssr";
+import { StepBar, Steps, type Step } from "@/components/onboarding/steps";
 import { Button, ButtonLink } from "@/components/ui/button";
 import type { RestaurantProfile, SpotSuggestion } from "@/lib/onboarding";
 import { PRICES, SLOTS } from "@/lib/space-options";
@@ -14,8 +15,42 @@ type CardState = "idle" | "publishing" | "published" | "skipped" | { error: stri
 
 const icon = { size: 24, "aria-hidden": true, className: "alt-icon" } as const;
 
-export function MapsSetup() {
-  const [stage, setStage] = useState<Stage>("link");
+const STEP_OF: Record<Stage, Step> = { link: 1, researching: 1, review: 2, suggesting: 2, suggestions: 3 };
+
+/** The step list (desktop) or progress bar (mobile) beside the current step's card. */
+function Layout({ step, back, title, lead, children, after }: {
+  step: Step;
+  back: boolean;
+  title: string;
+  lead?: ReactNode;
+  children: ReactNode;
+  after?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-12">
+      <aside className="hidden w-60 shrink-0 pt-2 lg:block">
+        <Steps current={step} />
+      </aside>
+      <div className="flex min-w-0 max-w-[640px] flex-1 flex-col gap-6">
+        <div className="lg:hidden">
+          <StepBar current={step} />
+        </div>
+        <div key={step} className={`alt-step-in ${back ? "alt-step-in--back" : ""} flex flex-col gap-6`}>
+          <header className="flex flex-col gap-2">
+            <h1 className="alt-h2">{title}</h1>
+            {lead && <p className="alt-lead alt-secondary">{lead}</p>}
+          </header>
+          <div className="alt-card !p-6 sm:!p-8">{children}</div>
+          {after}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function MapsSetup({ manual }: { manual?: ReactNode }) {
+  const [stage, setStageRaw] = useState<Stage>("link");
+  const [back, setBack] = useState(false);
   const [link, setLink] = useState("");
   const [steps, setSteps] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +62,12 @@ export function MapsSetup() {
   const [basis, setBasis] = useState<"hours" | "estimate">("hours");
   const [cards, setCards] = useState<Record<number, CardState>>({});
   const abortRef = useRef<AbortController | null>(null);
+
+  // Remember the direction so the next step card slides in from the right side.
+  function setStage(next: Stage) {
+    setBack(STEP_OF[next] < STEP_OF[stage]);
+    setStageRaw(next);
+  }
 
   function applyProfile(p: RestaurantProfile, sample: boolean) {
     setProfile(p);
@@ -121,53 +162,61 @@ export function MapsSetup() {
   if (stage === "link" || stage === "researching") {
     const running = stage === "researching";
     return (
-      <div className="flex flex-col gap-5">
-        <form onSubmit={lookUp} className="flex flex-col gap-4">
-          <div className="alt-field">
-            <label htmlFor="maps-link" className="alt-label flex items-center gap-2">
-              <MapPin size={20} aria-hidden="true" />
-              Your Google Maps link
-            </label>
-            <input
-              id="maps-link"
-              type="url"
-              inputMode="url"
-              className="alt-input"
-              placeholder="https://maps.app.goo.gl/…"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              disabled={running}
-            />
-            <p className="alt-help">In Google Maps, open your restaurant, tap Share, then Copy link.</p>
-          </div>
-          <Button type="submit" disabled={running} className="alt-button--block">
-            {running ? "Looking up your restaurant…" : "Look up my restaurant"}
-          </Button>
-        </form>
-
-        {running && (
-          <ol aria-live="polite" aria-label="Progress" className="alt-list">
-            {(steps.length ? steps : ["Reading your link"]).map((s, i, all) => (
-              <li key={i} className="alt-row">
-                <span className={i === all.length - 1 ? "text-ink" : "alt-secondary"}>{s}</span>
-                {i < all.length - 1 && <CheckCircle size={20} aria-hidden="true" className="text-basil" />}
-              </li>
-            ))}
-          </ol>
-        )}
-
-        {error && (
-          <div role="alert" className="alt-notice alt-notice--problem">
-            <WarningCircle {...icon} />
-            <div className="flex flex-col gap-2">
-              <span>{error}</span>
-              <button type="button" className="alt-link self-start text-left" onClick={() => applyProfile(SAMPLE_PROFILE, true)}>
-                Try with a sample restaurant instead
-              </button>
+      <Layout
+        step={1}
+        back={back}
+        title="Find your restaurant"
+        lead="Paste your Google Maps link and we'll fill in your details and suggest dates you could post. You check everything before anything goes live."
+        after={manual}
+      >
+        <div className="flex flex-col gap-5">
+          <form onSubmit={lookUp} className="flex flex-col gap-4">
+            <div className="alt-field">
+              <label htmlFor="maps-link" className="alt-label flex items-center gap-2">
+                <MapPin size={20} aria-hidden="true" />
+                Your Google Maps link
+              </label>
+              <input
+                id="maps-link"
+                type="url"
+                inputMode="url"
+                className="alt-input"
+                placeholder="https://maps.app.goo.gl/…"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                disabled={running}
+              />
+              <p className="alt-help">In Google Maps, open your restaurant, tap Share, then Copy link.</p>
             </div>
-          </div>
-        )}
-      </div>
+            <Button type="submit" disabled={running} className="alt-button--block">
+              {running ? "Looking up your restaurant…" : "Look up my restaurant"}
+            </Button>
+          </form>
+
+          {running && (
+            <ol aria-live="polite" aria-label="Progress" className="alt-list">
+              {(steps.length ? steps : ["Reading your link"]).map((s, i, all) => (
+                <li key={i} className="alt-row">
+                  <span className={i === all.length - 1 ? "text-ink" : "alt-secondary"}>{s}</span>
+                  {i < all.length - 1 && <CheckCircle size={20} aria-hidden="true" className="text-basil" />}
+                </li>
+              ))}
+            </ol>
+          )}
+
+          {error && (
+            <div role="alert" className="alt-notice alt-notice--problem">
+              <WarningCircle {...icon} />
+              <div className="flex flex-col gap-2">
+                <span>{error}</span>
+                <button type="button" className="alt-link self-start text-left" onClick={() => applyProfile(SAMPLE_PROFILE, true)}>
+                  Try with a sample restaurant instead
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </Layout>
     );
   }
 
@@ -175,84 +224,86 @@ export function MapsSetup() {
   if ((stage === "review" || stage === "suggesting") && profile) {
     const busy = stage === "suggesting";
     return (
-      <form onSubmit={confirm} className="flex flex-col gap-5">
-        {isSample && (
-          <p className="alt-notice alt-notice--info">
-            <Info {...icon} />
-            This is a sample restaurant so you can see how setup works. Change the name and location to your own.
-          </p>
-        )}
-        <p className="alt-lead">Here&apos;s what we found. Check it and fix anything that&apos;s wrong.</p>
+      <Layout step={2} back={back} title="Check your details" lead="Here's what we found. Check it and fix anything that's wrong.">
+        <form onSubmit={confirm} className="flex flex-col gap-5">
+          {isSample && (
+            <p className="alt-notice alt-notice--info">
+              <Info {...icon} />
+              This is a sample restaurant so you can see how setup works. Change the name and location to your own.
+            </p>
+          )}
+          <div className="alt-field">
+            <label htmlFor="profile-name" className="alt-label">Restaurant name</label>
+            <input id="profile-name" className="alt-input" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
+          </div>
+          <div className="alt-field">
+            <label htmlFor="profile-location" className="alt-label">Location</label>
+            <input id="profile-location" className="alt-input" value={location} onChange={(e) => setLocation(e.target.value)} disabled={busy} />
+            <p className="alt-help">Neighborhood and city, e.g. Capitol Hill, Seattle, WA.</p>
+          </div>
 
-        <div className="alt-field">
-          <label htmlFor="profile-name" className="alt-label">Restaurant name</label>
-          <input id="profile-name" className="alt-input" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
-        </div>
-        <div className="alt-field">
-          <label htmlFor="profile-location" className="alt-label">Location</label>
-          <input id="profile-location" className="alt-input" value={location} onChange={(e) => setLocation(e.target.value)} disabled={busy} />
-          <p className="alt-help">Neighborhood and city, e.g. Capitol Hill, Seattle, WA.</p>
-        </div>
+          <ProfileDetails profile={profile} />
 
-        <ProfileDetails profile={profile} />
-
-        {error && (
-          <p role="alert" className="alt-notice alt-notice--problem">
-            <WarningCircle {...icon} />
-            {error}
-          </p>
-        )}
-        <Button type="submit" disabled={busy || !name.trim() || !location.trim()} className="alt-button--block">
-          {busy ? "Finding good spots to post…" : "Looks right, continue"}
-        </Button>
-        {!busy && (
-          <button type="button" className="alt-link self-center" onClick={() => setStage("link")}>
-            Use a different link
-          </button>
-        )}
-      </form>
+          {error && (
+            <p role="alert" className="alt-notice alt-notice--problem">
+              <WarningCircle {...icon} />
+              {error}
+            </p>
+          )}
+          <Button type="submit" disabled={busy || !name.trim() || !location.trim()} className="alt-button--block">
+            {busy ? "Finding good spots to post…" : "Looks right, continue"}
+          </Button>
+          {!busy && (
+            <button type="button" className="alt-link self-center" onClick={() => setStage("link")}>
+              Use a different link
+            </button>
+          )}
+        </form>
+      </Layout>
     );
   }
 
   // ---- Stage: suggestions --------------------------------------------------
   const published = Object.values(cards).filter((c) => c === "published").length;
   return (
-    <div className="flex flex-col gap-5">
-      <p className="alt-notice alt-notice--success">
-        <CheckCircle {...icon} />
-        {name} is registered.
-      </p>
-
-      {suggestions.length > 0 ? (
-        <>
-          <div className="flex flex-col gap-1">
-            <h2 className="alt-title">Spots you could post</h2>
-            <p className="alt-secondary">
-              {basis === "hours"
-                ? "Picked from your opening hours, at times that are often quieter for restaurants like yours."
-                : "We couldn't confirm your opening hours, so these times are estimates. Check them before publishing."}{" "}
-              Nothing is posted until you tap Publish.
-            </p>
-          </div>
-          <ul className="flex flex-col gap-3">
-            {suggestions.map((s, i) => (
-              <li key={i}>
-                <SuggestionCard s={s} state={cards[i] ?? "idle"} onPublish={() => publish(i)} onSkip={() => setCards((c) => ({ ...c, [i]: "skipped" }))} />
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <p className="alt-notice alt-notice--info">
-          <Info {...icon} />
-          {error ?? "We couldn't find a good spot to suggest right now."} You can publish one yourself.
+    <Layout step={3} back={back} title="Which dates could use more guests?">
+      <div className="flex flex-col gap-5">
+        <p className="alt-notice alt-notice--success">
+          <CheckCircle {...icon} />
+          {name} is registered.
         </p>
-      )}
 
-      <ButtonLink href="/restaurant?registered=1" variant={published > 0 ? "primary" : "secondary"} className="alt-button--block">
-        {published > 0 ? `Go to my dashboard (${published} published)` : "Go to my dashboard"}
-      </ButtonLink>
-    </div>
+        {suggestions.length > 0 ? (
+          <>
+            <div className="flex flex-col gap-1">
+              <h2 className="alt-title">Spots you could post</h2>
+              <p className="alt-secondary">
+                {basis === "hours"
+                  ? "Picked from your opening hours, at times that are often quieter for restaurants like yours."
+                  : "We couldn't confirm your opening hours, so these times are estimates. Check them before publishing."}{" "}
+                Nothing is posted until you tap Publish.
+              </p>
+            </div>
+            <ul className="flex flex-col gap-3">
+              {suggestions.map((s, i) => (
+                <li key={i}>
+                  <SuggestionCard s={s} state={cards[i] ?? "idle"} onPublish={() => publish(i)} onSkip={() => setCards((c) => ({ ...c, [i]: "skipped" }))} />
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="alt-notice alt-notice--info">
+            <Info {...icon} />
+            {error ?? "We couldn't find a good spot to suggest right now."} You can publish one yourself.
+          </p>
+        )}
+
+        <ButtonLink href="/restaurant?registered=1" variant={published > 0 ? "primary" : "secondary"} className="alt-button--block">
+          {published > 0 ? `Go to my dashboard (${published} published)` : "Go to my dashboard"}
+        </ButtonLink>
+      </div>
+    </Layout>
   );
 }
 
