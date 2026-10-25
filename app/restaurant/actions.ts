@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentRestaurant } from "@/lib/session";
+import { AREAS, CAPACITIES, FEATURES, PRICES, SLOTS } from "@/lib/space-options";
 import { createSpace } from "@/lib/spaces";
 import { seattleToUtc } from "@/lib/time";
 
@@ -13,44 +15,49 @@ export type FormState = {
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
 export async function publishSpace(_prev: FormState, formData: FormData): Promise<FormState> {
-  const values = Object.fromEntries(
-    ["restaurantName", "location", "label", "date", "startTime", "endTime", "capacity", "description", "priceInfo"].map(
-      (k) => [k, str(formData, k)],
-    ),
-  );
+  const restaurant = await getCurrentRestaurant();
+  if (!restaurant) redirect("/restaurant/signup");
+
+  const area = AREAS.find((a) => a === str(formData, "area"));
+  const slot = SLOTS.find((s) => s.value === str(formData, "slot"));
+  const price = PRICES.find((p) => p.value === str(formData, "price"));
+  const capacity = Number(str(formData, "capacity"));
+  const date = str(formData, "date");
+  const features = formData.getAll("features").filter((f) => FEATURES.includes(f as (typeof FEATURES)[number]));
+
   const errors: Record<string, string> = {};
+  if (!area) errors.area = "Pick an area.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.date = "Pick a day.";
+  if (!slot) errors.slot = "Pick a time.";
+  if (!(CAPACITIES as readonly number[]).includes(capacity)) errors.capacity = "Pick the number of seats.";
+  if (!price) errors.price = "Pick a minimum spend.";
 
-  if (!values.restaurantName) errors.restaurantName = "Enter the restaurant name.";
-  if (!values.location) errors.location = "Enter the location.";
-  if (!values.label) errors.label = "Give the space a label, e.g. “Table A”.";
-
-  const capacity = Number(values.capacity);
-  if (!Number.isInteger(capacity) || capacity < 1) errors.capacity = "Capacity must be at least 1.";
-
-  let startsAt: Date | null = null;
-  let endsAt: Date | null = null;
-  if (!values.date) errors.date = "Pick a date.";
-  if (!values.startTime) errors.startTime = "Pick a start time.";
-  if (!values.endTime) errors.endTime = "Pick an end time.";
-  if (values.date && values.startTime && values.endTime) {
-    startsAt = seattleToUtc(values.date, values.startTime);
-    endsAt = seattleToUtc(values.date, values.endTime);
-    if (endsAt <= startsAt) errors.endTime = "End time must be after the start time.";
-    else if (startsAt <= new Date()) errors.date = "The date and time must be in the future.";
+  let startsAt: Date | undefined;
+  let endsAt: Date | undefined;
+  if (!errors.date && slot) {
+    startsAt = seattleToUtc(date, slot.start);
+    endsAt = seattleToUtc(date, slot.end);
+    if (startsAt <= new Date()) errors.slot = "That time has already passed. Pick a later time or day.";
   }
 
-  if (Object.keys(errors).length || !startsAt || !endsAt) return { errors, values };
+  if (Object.keys(errors).length || !area || !startsAt || !endsAt || !price) return { errors };
 
-  await createSpace({
-    restaurantName: values.restaurantName,
-    location: values.location,
-    label: values.label,
-    startsAt: startsAt.toISOString(),
-    endsAt: endsAt.toISOString(),
-    capacity,
-    description: values.description || null,
-    priceInfo: values.priceInfo || null,
-  });
+  try {
+    await createSpace({
+      restaurantId: restaurant.id,
+      restaurantName: restaurant.name,
+      location: restaurant.location,
+      label: area,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      capacity,
+      description: features.length ? features.join(", ") : null,
+      priceInfo: price.info,
+    });
+  } catch (err) {
+    console.error("publishSpace failed", err);
+    return { errors: { form: "Something went wrong and the space wasn't published. Please try again." } };
+  }
 
   revalidatePath("/restaurant");
   redirect("/restaurant?published=1");
