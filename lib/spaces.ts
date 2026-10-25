@@ -13,6 +13,7 @@ export type Space = {
   priceInfo: string | null;
   status: "available" | "booked";
   event: {
+    id: string;
     title: string;
     organizerName: string;
     seatsTaken: number;
@@ -24,6 +25,7 @@ export type NewSpace = Omit<Space, "id" | "status" | "event">;
 
 type SpaceWithBookingRow = {
   id: string;
+  restaurant_id: string;
   restaurant_name: string;
   restaurant_location: string;
   label: string;
@@ -48,11 +50,14 @@ type AvailableSpaceRow = Pick<
   "id" | "restaurant_name" | "restaurant_location" | "label" | "starts_at" | "ends_at" | "capacity" | "description" | "price_info"
 >;
 
-/** Restaurant dashboard (/restaurant): every space, including past and booked ones. */
-export async function listSpaces(): Promise<Space[]> {
-  const { data, error } = await supabase()
-    .from("spaces_with_booking")
-    .select("*")
+/**
+ * Restaurant dashboard (/restaurant): every space, including past and booked ones.
+ * Pass `restaurantId` to see only one restaurant's spaces.
+ */
+export async function listSpaces(restaurantId?: string): Promise<Space[]> {
+  let query = supabase().from("spaces_with_booking").select("*");
+  if (restaurantId) query = query.eq("restaurant_id", restaurantId);
+  const { data, error } = await query
     .order("starts_at")
     .order("label")
     .returns<SpaceWithBookingRow[]>();
@@ -111,6 +116,7 @@ function toSpace(r: SpaceWithBookingRow): Space {
     status: r.status,
     event: r.event_id
       ? {
+          id: r.event_id,
           title: r.event_title!,
           organizerName: r.organizer_name!,
           seatsTaken: r.seats_taken ?? 0,
@@ -187,4 +193,32 @@ async function findRestaurant(name: string, location: string): Promise<string | 
 // ilike without wildcards is a case-insensitive equality check.
 function escapeLike(s: string): string {
   return s.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+// ---------------------------------------------------------------------------
+// Restaurant sign-up. V0 has no auth: a restaurant is identified by its name and
+// location (the data model's uniqueness key), so registering twice with the same
+// details simply signs the restaurant back in.
+// ---------------------------------------------------------------------------
+
+export type Restaurant = { id: string; name: string; location: string };
+
+export async function getRestaurant(id: string): Promise<Restaurant | null> {
+  if (!isUuid(id)) return null;
+  const { data, error } = await supabase()
+    .from("restaurants")
+    .select("id, name, location")
+    .eq("id", id)
+    .returns<Restaurant[]>()
+    .maybeSingle();
+  if (error) throw new Error(`getRestaurant: ${error.message}`);
+  return data;
+}
+
+/** Find the restaurant with this name and location, or create it. */
+export async function registerRestaurant(name: string, location: string): Promise<Restaurant> {
+  const id = await findOrCreateRestaurant(name, location);
+  const restaurant = await getRestaurant(id);
+  if (!restaurant) throw new Error("registerRestaurant: restaurant disappeared after creation");
+  return restaurant;
 }

@@ -33,3 +33,25 @@ export function formatTimeRange(start: Date, end: Date): string {
     d.toLocaleTimeString("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" });
   return `${f(start)} – ${f(end)}`;
 }
+
+export type DayOption = { value: string; weekday: string; label: string };
+
+/** The next `count` calendar days (starting today) in Seattle time. */
+export function upcomingDays(count: number): DayOption[] {
+  const ymd = new Date().toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD
+  const [y, m, d] = ymd.split("-").map(Number);
+  return Array.from({ length: count }, (_, i) => {
+    const date = new Date(Date.UTC(y, m - 1, d + i, 12));
+    const part = (o: Intl.DateTimeFormatOptions) => date.toLocaleDateString("en-US", { timeZone: "UTC", ...o });
+    return {
+      value: date.toISOString().slice(0, 10),
+      weekday: i === 0 ? "Today" : part({ weekday: "short" }),
+      label: part({ month: "short", day: "numeric" }),
+    };
+  });
+}
+
+/** "YYYY-MM-DD" of an instant, as a Seattle calendar day. */
+export function seattleDateKey(d: Date): string {
+  return d.toLocaleDateString("en-CA", { timeZone: TZ });
+}

@@ -56,7 +56,9 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
 
 ### Still open from Phase 2
 
-- [ ] **R1 prefill:** prefill restaurant name and location on `/restaurant/new` from the seed restaurant (Il Nido), so both demo spaces share one restaurant (data model, "Publish").
+- [x] **R1 prefill:** done via restaurant sign-up (`/restaurant/signup`). A restaurant registers once by name and location (or signs back in by entering the same details). The id is kept in a cookie, `/restaurant/new` no longer asks for name and location, and `/restaurant` lists only that restaurant's spaces. No schema change.
+- [x] **Restaurant dashboard:** stat tiles, a guests-booked line chart (next 14 days) and a month calendar of events and guests per day, on `/restaurant`.
+- Dev only: `/restaurant` shows "Demo: simulate booking" and "Demo: a guest joins" buttons under `npm run dev`. They call the real `create_event_for_space` and `reserve_seat` and write real rows; run `supabase/reset.sql` to clear them.
 
 ### Phase 3: Regular User UI, creating events (≈3h)
 
