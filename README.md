@@ -6,6 +6,8 @@ ALongTable is a marketplace that connects restaurants with unused seating to peo
 
 Source of truth: [V0 PRD (Google Doc)](https://docs.google.com/document/d/1KZRtQpz9H2RFnxD1zin12C5vj1YJKTTi/edit)
 
+Database contract: [`data-model/README.md`](data-model/README.md)
+
 ---
 
 ## Initial checklist: V0 build plan
@@ -38,35 +40,21 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
 
 ### Phase 1: Database (≈2h)
 
-Create `supabase/schema.sql` and run it in the Supabase SQL editor.
+The database contract is [`data-model/README.md`](data-model/README.md). Implement that document. Do not add tables or columns it leaves out.
 
-- [ ] **`restaurants`**: `id`, `name`, `location`, `created_at`
-- [ ] **`spaces`**: `id`, `restaurant_id`, `label` (e.g. "Table A"), `starts_at timestamptz`, `ends_at timestamptz`, `capacity int check (capacity > 0)`, `description`, `price_info`, `status` (`available` | `booked`), `check (ends_at > starts_at)`
-- [ ] **`events`**: `id`, `space_id unique` (one event per space), `title`, `description`, `capacity int`, `organizer_name`, `organizer_email`, `created_at`
-- [ ] **`reservations`**: `id`, `event_id`, `name`, `email`, `confirmation_code unique`, `created_at`, `unique (event_id, email)`
-- [ ] **`create_event_for_space(space_id, title, description, capacity, organizer_name, organizer_email)`**: a Postgres function that does the following in one transaction:
-  1. `select … for update` locks the space row.
-  2. It fails if the status is not `available` or the capacity is greater than the space's capacity.
-  3. It inserts the event and sets the space to `booked`, then returns the event.
-- [ ] **`reserve_seat(event_id, name, email)`**: a Postgres function that does the following in one transaction:
-  1. `select … for update` locks the event row.
-  2. It counts the reservations and fails with `EVENT_FULL` if the count is at or above capacity.
-  3. It inserts the reservation (the unique constraint blocks duplicate emails with `ALREADY_RESERVED`) and returns the confirmation code.
-- [ ] **View `events_with_availability`**: event fields + space time + restaurant name/location + `seats_left = capacity - count(reservations)`
-- [ ] **`supabase/seed.sql`**: one Seattle restaurant (e.g. Il Nido) and no spaces, so the demo starts from a clean slate. Include a reset script that truncates spaces, events and reservations.
-
-> Times: store UTC (`timestamptz`) and always display in `America/Los_Angeles`.
+- [ ] Create `supabase/schema.sql` from the data model and run it in the Supabase SQL editor. That file has the four tables, `create_event_for_space`, `reserve_seat`, and the views `available_spaces`, `events_with_availability`, and `spaces_with_booking`.
+- [ ] Create `supabase/seed.sql`: Il Nido and no spaces, plus a reset that truncates spaces, events, and reservations and leaves restaurants.
 
 ### Phase 2: Restaurant Owner UI (≈2–3h)
 
-- [ ] **R1 Publish space** (`/restaurant/new`): a form with restaurant name and location, space label, date, start/end time, capacity, and optional description and pricing info. A server action validates that capacity ≥ 1, end is after start, and the date is in the future, then inserts the row. Several spaces can share the same date and time.
-- [ ] **R2 My spaces** (`/restaurant`): a list of all published spaces with an **Available** or **Booked** badge. Booked spaces show the event title, organizer and seats taken.
+- [ ] **R1 Publish space** (`/restaurant/new`): a form with restaurant name and location (prefilled from the seed restaurant), space label, date, start/end time, capacity, and optional description and pricing info. A server action validates that capacity ≥ 1, end is after start, and the date is in the future, find-or-creates the restaurant, and inserts the space. Several spaces can share the same date and time.
+- [ ] **R2 My spaces** (`/restaurant`): `spaces_with_booking`, a list of all published spaces with an **Available** or **Booked** badge. Booked spaces show the event title, organizer and seats taken.
 
 ✅ Done when: two 10-seat spaces for Wednesday 6–9 PM can be published and appear in the list as Available.
 
 ### Phase 3: Regular User UI, creating events (≈3h)
 
-- [ ] **U1 Browse spaces** (`/spaces`): shows only `available` spaces in the future, each with restaurant, location, date, time and capacity.
+- [ ] **U1 Browse spaces** (`/spaces`): `available_spaces`, each with restaurant, location, date, time and capacity.
 - [ ] **Space details** (`/spaces/[id]`): full details and a **"Book this space & create event"** button.
 - [ ] **U2 Create event** (`/spaces/[id]/create-event`): a form with title, description, number of spots (1 up to the space's capacity), and organizer name and email. It calls the `create_event_for_space` function.
 - [ ] **Event created** (`/events/[id]/created`): a success screen with a link to the public event page.
