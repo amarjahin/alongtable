@@ -1,16 +1,18 @@
 import type { ReactNode } from "react";
 
+// One meaning per color (brand/DESIGN.md): mint = booked, apricot = filling up,
+// sky = information, red = a problem. "neutral" claims no meaning.
+// `green` is the older name used by some pages for "open / has spots"; it renders as information.
 const tones = {
-  green: "bg-emerald-50 text-emerald-800 ring-emerald-600/20",
-  neutral: "bg-neutral-100 text-neutral-700 ring-neutral-500/20",
+  booked: "alt-chip alt-chip--booked",
+  filling: "alt-chip alt-chip--filling",
+  info: "alt-chip alt-chip--info",
+  problem: "alt-chip alt-chip--problem",
+  neutral: "alt-chip",
+  green: "alt-chip alt-chip--info",
 };
 
+// shrink-0: a chip never wraps or gets squeezed beside a long title.
 export function Badge({ tone, children }: { tone: keyof typeof tones; children: ReactNode }) {
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${tones[tone]}`}
-    >
-      {children}
-    </span>
-  );
+  return <span className={`${tones[tone]} shrink-0`}>{children}</span>;
 }

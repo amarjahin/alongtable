@@ -1,24 +1,14 @@
 import Link from "next/link";
+import { CalendarCheck, CaretLeft, CaretRight } from "@phosphor-icons/react/ssr";
 import type { DayStats } from "@/lib/stats";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const BOOKED = "#2a78d6";
-const OPEN = "#b7d3f6";
 
 const shift = (month: string, by: number) => {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1 + by, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
-
-function EventIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width={11} height={11} aria-hidden className="shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5}>
-      <rect x={2} y={3} width={12} height={11} rx={2} />
-      <path d="M2 7h12M5.5 1.5v3M10.5 1.5v3" />
-    </svg>
-  );
-}
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -40,28 +30,28 @@ export function Calendar({
 
   const key = (d: number) => `${month}-${String(d).padStart(2, "0")}`;
   const title = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-  const nav = "rounded-md border border-neutral-300 px-2 py-0.5 text-sm hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-900 outline-none";
+  const nav = "alt-button !min-h-11 !w-11 !px-0";
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="font-semibold">Calendar</h2>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="alt-title">Calendar</h2>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{title}</span>
+          <span className="font-semibold">{title}</span>
           <Link href={`?month=${shift(month, -1)}`} className={nav} aria-label="Previous month">
-            ←
+            <CaretLeft size={20} aria-hidden="true" />
           </Link>
           <Link href={`?month=${shift(month, 1)}`} className={nav} aria-label="Next month">
-            →
+            <CaretRight size={20} aria-hidden="true" />
           </Link>
         </div>
       </div>
 
-      <table className="w-full table-fixed border-separate border-spacing-px text-left">
+      <table className="w-full table-fixed border-separate border-spacing-1 text-left">
         <thead>
           <tr>
             {WEEKDAYS.map((w) => (
-              <th key={w} className="pb-1 text-center text-xs font-normal text-neutral-600">
+              <th key={w} className="pb-1 text-center text-sm font-semibold text-ink-soft">
                 <span className="sm:hidden">{w[0]}</span>
                 <span className="hidden sm:inline">{w}</span>
               </th>
@@ -79,29 +69,39 @@ export function Calendar({
                 const label = s
                   ? `${plural(s.events, "event", "events")}, ${s.guests} of ${s.seats} seats booked, ${s.seats - s.guests} open`
                   : "no spaces";
+                // Mint = a booked day (brand meaning); sunken = quiet.
                 return (
                   <td
                     key={c}
                     aria-label={`${title.split(" ")[0]} ${d}: ${label}`}
-                    className={`h-14 rounded-md border bg-white align-top ${isToday ? "border-neutral-900" : "border-neutral-200"}`}
+                    className={`h-[76px] rounded-small align-top ${s && s.events > 0 ? "bg-mint" : "bg-sunken"}`}
                   >
-                    <div className="flex h-full flex-col p-1 text-[11px] leading-tight">
+                    <div className="flex h-full flex-col p-1.5 text-sm leading-tight">
                       <div className="flex items-start justify-between gap-1">
-                        <span className={isToday ? "font-semibold" : "text-neutral-700"}>{d}</span>
+                        <span
+                          className={
+                            isToday
+                              ? "inline-flex size-6 items-center justify-center rounded-full bg-ink font-semibold text-white"
+                              : "font-semibold"
+                          }
+                        >
+                          {d}
+                        </span>
                         {s && s.events > 0 && (
-                          <span className="flex items-center gap-0.5 text-neutral-700">
-                            <EventIcon />
-                            <b className="font-semibold">{s.events}</b>
+                          <span className="hidden items-center gap-0.5 font-semibold sm:flex">
+                            <CalendarCheck size={14} aria-hidden="true" />
+                            {s.events}
                           </span>
                         )}
                       </div>
                       {s && s.seats > 0 && (
                         <div className="mt-auto">
-                          <p className="font-semibold text-neutral-950">
-                            {full ? "Full" : `${s.guests}/${s.seats}`}
-                          </p>
-                          <div className="mt-0.5 h-1 overflow-hidden rounded-full" style={{ background: OPEN }}>
-                            <div className="h-full rounded-full" style={{ width: `${Math.min(100, (s.guests / s.seats) * 100)}%`, background: BOOKED }} />
+                          <p className="font-semibold tabular-nums">{full ? "Full" : `${s.guests}/${s.seats}`}</p>
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface">
+                            <div
+                              className="h-full rounded-full bg-ink"
+                              style={{ width: `${Math.min(100, (s.guests / s.seats) * 100)}%` }}
+                            />
                           </div>
                         </div>
                       )}
@@ -114,15 +114,15 @@ export function Calendar({
         </tbody>
       </table>
 
-      <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600">
-        <span className="flex items-center gap-1">
-          <EventIcon /> events
+      <p className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-base">
+        <span className="flex items-center gap-2">
+          <span className="inline-block size-4 rounded-small bg-mint" /> Has a booked event
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-1 w-6 overflow-hidden rounded-full" style={{ background: OPEN }}>
-            <span className="block h-full w-1/2 rounded-full" style={{ background: BOOKED }} />
+        <span className="flex items-center gap-2">
+          <span className="inline-block h-1.5 w-6 overflow-hidden rounded-full bg-divider">
+            <span className="block h-full w-1/2 bg-ink" />
           </span>
-          seats booked / total
+          Seats booked / total
         </span>
       </p>
     </div>

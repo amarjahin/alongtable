@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored brand assets (static demo page + vanilla JS); not part of the app.
+    "brand/**",
   ]),
 ]);
 

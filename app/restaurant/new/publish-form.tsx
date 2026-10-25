@@ -2,32 +2,38 @@
 
 import { useActionState } from "react";
 import { Form } from "@base-ui/react/form";
+import { CalendarBlank, ChatsCircle, Chair, Clock, ForkKnife, Storefront, WarningCircle } from "@phosphor-icons/react/ssr";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { TileMultiSelect, TileSelect } from "@/components/ui/tiles";
 import { AREAS, CAPACITIES, FEATURES, PRICES, SLOTS } from "@/lib/space-options";
 import type { DayOption } from "@/lib/time";
 import { publishSpace, type FormState } from "../actions";
 
+const icon = { size: 20, "aria-hidden": true } as const;
+
 export function PublishForm({ days }: { days: DayOption[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(publishSpace, {});
 
   return (
-    <Form action={action} errors={state.errors} className="flex flex-col gap-6">
+    <Form action={action} errors={state.errors} className="flex flex-col gap-8">
       <TileSelect
         name="area"
         label="Where in the restaurant?"
+        icon={<Storefront {...icon} />}
         defaultValue="Main dining"
         tiles={AREAS.map((a) => ({ value: a, label: a }))}
       />
       <TileSelect
         name="date"
         label="Which day?"
+        icon={<CalendarBlank {...icon} />}
         columns="grid-cols-3 sm:grid-cols-5 md:grid-cols-7"
         tiles={days.map((d) => ({ value: d.value, label: d.label, hint: d.weekday }))}
       />
       <TileSelect
         name="slot"
         label="What time?"
+        icon={<Clock {...icon} />}
         hint="Seattle time (Pacific)."
         defaultValue="dinner"
         columns="grid-cols-2"
@@ -36,6 +42,7 @@ export function PublishForm({ days }: { days: DayOption[] }) {
       <TileSelect
         name="capacity"
         label="How many seats?"
+        icon={<Chair {...icon} />}
         defaultValue="6"
         columns="grid-cols-3 sm:grid-cols-6"
         tiles={CAPACITIES.map((c) => ({ value: String(c), label: c }))}
@@ -43,26 +50,32 @@ export function PublishForm({ days }: { days: DayOption[] }) {
       <TileMultiSelect
         name="features"
         label="What's it like? (optional)"
+        icon={<ChatsCircle {...icon} />}
         tiles={FEATURES.map((f) => ({ value: f, label: f }))}
       />
       <TileSelect
         name="price"
         label="Minimum spend per person"
-        hint="Shown to people booking the space. No payments are collected in V0."
+        icon={<ForkKnife {...icon} />}
+        hint="Shown to people booking the space. No payments are collected yet."
         defaultValue="none"
         columns="grid-cols-2 sm:grid-cols-4"
         tiles={PRICES.map((p) => ({ value: p.value, label: p.label }))}
       />
+
       {state.errors?.form && (
-        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p role="alert" className="alt-notice alt-notice--problem">
+          <WarningCircle size={24} aria-hidden="true" className="alt-icon" />
           {state.errors.form}
         </p>
       )}
-      <div className="flex gap-3">
-        <Button type="submit" disabled={pending}>
+
+      <div className="flex flex-col gap-3">
+        <Button type="submit" disabled={pending} className="alt-button--block">
           {pending ? "Publishing…" : "Publish space"}
         </Button>
-        <ButtonLink href="/restaurant" variant="secondary">
+        <p className="alt-help text-center">Your space goes live right away, and guests can book it.</p>
+        <ButtonLink href="/restaurant" variant="quiet" className="self-center">
           Cancel
         </ButtonLink>
       </div>

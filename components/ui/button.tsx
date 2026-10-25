@@ -2,20 +2,22 @@ import { Button as BaseButton } from "@base-ui/react/button";
 import Link from "next/link";
 import type { ComponentProps } from "react";
 
-const styles = {
-  base: "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-neutral-900 disabled:cursor-not-allowed disabled:opacity-50",
-  primary: "bg-neutral-900 text-white hover:bg-neutral-700",
-  secondary: "border border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50",
+// brand/brand.css: primary = basil (one per screen), secondary = sunken, quiet = text only.
+const variants = {
+  primary: "alt-button alt-button--primary",
+  secondary: "alt-button",
+  quiet: "alt-button alt-button--quiet",
+  danger: "alt-button alt-button--danger",
 };
 
-type Variant = "primary" | "secondary";
+type Variant = keyof typeof variants;
 
 export function Button({
   variant = "primary",
   className = "",
   ...props
 }: ComponentProps<typeof BaseButton> & { variant?: Variant }) {
-  return <BaseButton className={`${styles.base} ${styles[variant]} ${className}`} {...props} />;
+  return <BaseButton className={`${variants[variant]} ${className}`} {...props} />;
 }
 
 export function ButtonLink({
@@ -23,5 +25,5 @@ export function ButtonLink({
   className = "",
   ...props
 }: ComponentProps<typeof Link> & { variant?: Variant }) {
-  return <Link className={`${styles.base} ${styles[variant]} ${className}`} {...props} />;
+  return <Link className={`${variants[variant]} ${className}`} {...props} />;
 }

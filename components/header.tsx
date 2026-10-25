@@ -10,18 +10,22 @@ const links = [
   { href: "/restaurant", label: "For restaurants" },
 ];
 
+const navLink =
+  "flex min-h-11 items-center whitespace-nowrap rounded-small px-3 font-semibold text-ink-soft hover:bg-sunken hover:text-ink";
+
+// Surface, not outline: white header on the off-white page, no border.
 export function Header() {
   return (
-    <header className="border-b border-neutral-200 bg-white">
-      <nav className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
-        <Link href="/" className="text-lg font-semibold">
+    <header className="bg-surface">
+      <nav className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-2">
+        <Link href="/" className="flex min-h-11 items-center text-xl font-extrabold tracking-tight text-ink">
           ALongTable
         </Link>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+        <div className="flex flex-wrap items-center gap-x-1">
+          <ul className="flex flex-wrap gap-x-1">
             {links.map((l) => (
-              <li key={l.href} className="whitespace-nowrap">
-                <Link href={l.href} className="text-neutral-700 hover:text-neutral-900">
+              <li key={l.href}>
+                <Link href={l.href} className={navLink}>
                   {l.label}
                 </Link>
               </li>
@@ -42,16 +46,19 @@ async function SignedInRestaurant() {
   if (!restaurant) return null;
 
   return (
-    <div className="flex items-center gap-3 border-l border-neutral-200 pl-5 text-sm">
+    <div className="ml-2 flex items-center gap-1 rounded-control bg-sunken pl-3">
       <Link
         href="/restaurant"
-        className="whitespace-nowrap font-medium text-neutral-900 hover:underline"
+        className="flex min-h-11 items-center whitespace-nowrap font-semibold text-ink"
         title="Signed in as a restaurant"
       >
         {restaurant.name}
       </Link>
       <form action={signOut}>
-        <button type="submit" className="whitespace-nowrap text-neutral-500 hover:text-neutral-900">
+        <button
+          type="submit"
+          className="flex min-h-11 items-center whitespace-nowrap rounded-small px-3 font-semibold text-ink-soft hover:text-ink"
+        >
           Sign out
         </button>
       </form>

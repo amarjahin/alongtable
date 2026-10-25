@@ -14,17 +14,17 @@ export type DayPoint = {
   spaces: number;
 };
 
-// Chart tokens: booked = blue 450, open seats = blue 150 (same hue, lighter), hover = blue 550.
-const BOOKED = "#2a78d6";
-const BOOKED_ACTIVE = "#1c5cab";
-const OPEN = "#b7d3f6";
-const GRID = "#e1e0d9";
-const AXIS = "#c3c2b7";
-const BAND = "#f4f3ef";
-const MUTED = "#898781";
+// Brand tokens only (brand/DESIGN.md): ink = taken seats, divider = open seats, like the seat bar.
+// Colors go through `style` because SVG presentation attributes don't resolve var().
+const TAKEN = { fill: "var(--alt-ink)" };
+const OPEN = { fill: "var(--alt-divider)" };
+const BAND = { fill: "var(--alt-sunken)" };
+const GRID = { stroke: "var(--alt-divider)" };
+const AXIS = { stroke: "var(--alt-field-border)" };
+const TEXT = { fill: "var(--alt-ink-soft)", fontSize: 14 };
 
-const MIN_H = 176;
-const M = { t: 18, r: 8, b: 34, l: 28 };
+const MIN_H = 200;
+const M = { t: 12, r: 8, b: 44, l: 34 };
 const MAX_BAR = 24;
 const GAP = 2;
 
@@ -57,7 +57,7 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
     const el = box.current;
     if (!el) return;
     const ro = new ResizeObserver(([e]) => {
-      setW(Math.max(260, Math.round(e.contentRect.width)));
+      setW(Math.max(280, Math.round(e.contentRect.width)));
       setH(Math.max(MIN_H, Math.round(e.contentRect.height)));
     });
     ro.observe(el);
@@ -74,6 +74,8 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
   const y = (v: number) => M.t + (1 - v / top) * (H - M.t - M.b);
   const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step);
   const a = active === null ? null : days[active];
+  // Label every other day when bars get tight so 14px day numbers never touch.
+  const every = band < 22 ? 2 : 1;
 
   function onPointer(e: PointerEvent<SVGSVGElement>) {
     const r = svg.current!.getBoundingClientRect();
@@ -91,20 +93,20 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <p className="mb-2 flex items-center gap-4 text-xs text-neutral-600">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-3 rounded-sm" style={{ background: BOOKED }} /> Booked
+      <p className="mb-3 flex items-center gap-5 text-base">
+        <span className="flex items-center gap-2">
+          <span className="inline-block size-3 rounded-full bg-ink" /> Booked
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-3 rounded-sm" style={{ background: OPEN }} /> Open seats
+        <span className="flex items-center gap-2">
+          <span className="inline-block size-3 rounded-full bg-divider" /> Open seats
         </span>
       </p>
 
-      <div ref={box} className="relative min-h-44 flex-1">
+      <div ref={box} className="relative min-h-52 flex-1">
         <svg
           ref={svg}
           viewBox={`0 0 ${W} ${H}`}
-          className="absolute inset-0 block h-full w-full touch-pan-y rounded outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+          className="absolute inset-0 block h-full w-full touch-pan-y rounded-small outline-none focus-visible:shadow-[var(--alt-focus)]"
           tabIndex={0}
           role="img"
           aria-label={`Bar chart of seats booked out of total seats for each of the next ${n} days. Use the left and right arrow keys to read each day.`}
@@ -113,12 +115,14 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
           onBlur={() => setActive(null)}
           onKeyDown={onKey}
         >
-          {active !== null && <rect x={M.l + band * active} y={M.t} width={band} height={H - M.t - M.b} fill={BAND} />}
+          {active !== null && (
+            <rect x={M.l + band * active} y={M.t} width={band} height={H - M.t - M.b} rx={6} style={BAND} />
+          )}
 
           {ticks.map((t) => (
             <g key={t}>
-              <line x1={M.l} x2={W - M.r} y1={y(t)} y2={y(t)} stroke={t === 0 ? AXIS : GRID} strokeWidth={1} />
-              <text x={M.l - 6} y={y(t) + 4} textAnchor="end" fontSize={11} fill={MUTED}>
+              <line x1={M.l} x2={W - M.r} y1={y(t)} y2={y(t)} strokeWidth={1} style={t === 0 ? AXIS : GRID} />
+              <text x={M.l - 8} y={y(t) + 5} textAnchor="end" style={TEXT}>
                 {t}
               </text>
             </g>
@@ -130,20 +134,17 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
             const full = d.seats > 0 && d.guests >= d.seats;
             return (
               <g key={d.key}>
-                {d.seats > 0 && (
-                  <path d={columnPath(x, y(d.seats), barW, y(0) - y(d.seats), 4)} fill={OPEN} />
-                )}
+                {d.seats > 0 && <path d={columnPath(x, y(d.seats), barW, y(0) - y(d.seats), 4)} style={OPEN} />}
                 {d.guests > 0 && (
-                  <path
-                    d={columnPath(x, y(d.guests), barW, y(0) - y(d.guests), full ? 4 : 0)}
-                    fill={active === i ? BOOKED_ACTIVE : BOOKED}
-                  />
+                  <path d={columnPath(x, y(d.guests), barW, y(0) - y(d.guests), full ? 4 : 0)} style={TAKEN} />
                 )}
-                <text x={cx(i)} y={H - 18} textAnchor="middle" fontSize={11} fill={MUTED}>
-                  {day}
-                </text>
+                {i % every === 0 && (
+                  <text x={cx(i)} y={H - 24} textAnchor="middle" style={TEXT}>
+                    {day}
+                  </text>
+                )}
                 {(i === 0 || day === "1") && (
-                  <text x={cx(i)} y={H - 5} textAnchor="middle" fontSize={11} fontWeight={600} fill={MUTED}>
+                  <text x={cx(i)} y={H - 6} textAnchor="middle" style={{ ...TEXT, fontWeight: 600 }}>
                     {month}
                   </text>
                 )}
@@ -154,31 +155,24 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
 
         {a && active !== null && (
           <div
-            className="pointer-events-none absolute top-1 z-10 min-w-36 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs shadow-sm"
+            className="pointer-events-none absolute top-1 z-10 min-w-40 rounded-control bg-ink px-4 py-3 text-sm text-white"
             style={{
               left: `${(cx(active) / W) * 100}%`,
               transform: active > n / 2 ? "translateX(calc(-100% - 12px))" : "translateX(12px)",
             }}
           >
-            <p className="text-neutral-600">
+            <p className="font-semibold">
               {a.weekday === "Today" ? "Today" : a.weekday}, {a.label}
             </p>
             {a.seats === 0 ? (
-              <p className="mt-1 text-neutral-600">No spaces published</p>
+              <p className="mt-1">No spaces published</p>
             ) : (
               <>
-                <p className="mt-1 flex items-center gap-2">
-                  <span className="inline-block h-2 w-3 rounded-sm" style={{ background: BOOKED }} />
-                  <span className="text-sm font-semibold text-neutral-950">
-                    {a.guests} of {a.seats}
-                  </span>
-                  <span className="text-neutral-600">seats booked</span>
+                <p className="mt-1 text-base font-semibold tabular-nums">
+                  {a.guests} of {a.seats} seats booked
                 </p>
-                <p className="mt-0.5 flex items-center gap-2">
-                  <span className="inline-block h-2 w-3 rounded-sm" style={{ background: OPEN }} />
-                  <span className="text-neutral-600">{a.seats - a.guests} open</span>
-                </p>
-                <p className="mt-0.5 text-neutral-600">
+                <p className="tabular-nums">{a.seats - a.guests} open</p>
+                <p>
                   {plural(a.spaces, "space", "spaces")} · {plural(a.events, "event", "events")}
                 </p>
               </>
@@ -187,7 +181,7 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
         )}
 
         {max === 0 && active === null && (
-          <p className="pointer-events-none absolute inset-x-0 top-1/3 text-center text-sm text-neutral-600">
+          <p className="alt-secondary pointer-events-none absolute inset-x-0 top-1/3 text-center">
             No spaces published in the next {n} days
           </p>
         )}
@@ -201,28 +195,28 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
           : ""}
       </p>
 
-      <details className="mt-2 text-sm">
-        <summary className="cursor-pointer text-neutral-600 hover:text-neutral-900">View as table</summary>
-        <table className="mt-2 w-full text-left text-xs">
-          <thead className="text-neutral-600">
+      <details className="mt-3">
+        <summary className="alt-link cursor-pointer">View as table</summary>
+        <table className="mt-3 w-full text-left text-sm">
+          <thead className="text-ink-soft">
             <tr>
-              <th className="py-1 font-medium">Day</th>
-              <th className="py-1 font-medium">Events</th>
-              <th className="py-1 font-medium">Booked</th>
-              <th className="py-1 font-medium">Open</th>
-              <th className="py-1 font-medium">Total seats</th>
+              <th className="py-1 pr-2 font-semibold">Day</th>
+              <th className="py-1 pr-2 font-semibold">Events</th>
+              <th className="py-1 pr-2 font-semibold">Booked</th>
+              <th className="py-1 pr-2 font-semibold">Open</th>
+              <th className="py-1 font-semibold">Total seats</th>
             </tr>
           </thead>
           <tbody>
             {days.map((d) => (
-              <tr key={d.key} className="border-t border-neutral-100">
-                <td className="py-1">
+              <tr key={d.key} className="border-t border-divider">
+                <td className="py-1.5 pr-2">
                   {d.weekday}, {d.label}
                 </td>
-                <td className="py-1 tabular-nums">{d.events}</td>
-                <td className="py-1 tabular-nums">{d.guests}</td>
-                <td className="py-1 tabular-nums">{d.seats - d.guests}</td>
-                <td className="py-1 tabular-nums">{d.seats}</td>
+                <td className="py-1.5 pr-2 tabular-nums">{d.events}</td>
+                <td className="py-1.5 pr-2 tabular-nums">{d.guests}</td>
+                <td className="py-1.5 pr-2 tabular-nums">{d.seats - d.guests}</td>
+                <td className="py-1.5 tabular-nums">{d.seats}</td>
               </tr>
             ))}
           </tbody>

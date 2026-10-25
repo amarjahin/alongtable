@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "Publish a space · ALongTable" };
 
 export default function NewSpacePage() {
   return (
-    <main className="mx-auto w-full max-w-xl px-4 py-8">
-      <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
+      <Suspense fallback={<p className="alt-secondary">Loading…</p>}>
         <Content />
       </Suspense>
     </main>
@@ -24,12 +24,16 @@ async function Content() {
   await connection(); // the day tiles depend on today's date, so render per request
   const days = upcomingDays(14);
   return (
-    <>
-      <h1 className="text-2xl font-semibold">Publish a space</h1>
-      <p className="mb-6 mt-1 text-sm text-neutral-600">
-        Publishing as <span className="font-medium">{restaurant.name}</span>, {restaurant.location}.
-      </p>
-      <PublishForm days={days} />
-    </>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col gap-2">
+        <h1 className="alt-h2">Publish a space</h1>
+        <p className="alt-lead alt-secondary">
+          Publishing as <span className="font-semibold text-ink">{restaurant.name}</span>, {restaurant.location}.
+        </p>
+      </header>
+      <div className="alt-card !p-6 sm:!p-8">
+        <PublishForm days={days} />
+      </div>
+    </div>
   );
 }

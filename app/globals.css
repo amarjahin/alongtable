@@ -1,26 +1,28 @@
 @import "tailwindcss";
+@import "../brand/brand.css";
 
+/* Brand tokens come from brand/brand.css. Light mode only (see brand/DESIGN.md). */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* next/font renames the family, so point the brand font token at it. */
+  --alt-font: var(--font-figtree), "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+/* Brand tokens as Tailwind utilities (bg-page, text-ink-soft, rounded-card, ...). */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  --color-basil: var(--alt-basil);
+  --color-basil-hover: var(--alt-basil-hover);
+  --color-ink: var(--alt-ink);
+  --color-ink-soft: var(--alt-ink-soft);
+  --color-page: var(--alt-page);
+  --color-surface: var(--alt-surface);
+  --color-sunken: var(--alt-sunken);
+  --color-divider: var(--alt-divider);
+  --color-mint: var(--alt-mint);
+  --color-apricot: var(--alt-apricot);
+  --color-sky: var(--alt-sky);
+  --color-problem: var(--alt-red);
+  --radius-card: var(--alt-radius-card);
+  --radius-control: var(--alt-radius-control);
+  --radius-small: var(--alt-radius-small);
+  --font-sans: var(--alt-font);
 }
