@@ -55,6 +55,8 @@ export function ForecastChart({ weeks, forecast }: { weeks: WeekPoint[]; forecas
     ...forecast.map((f, i) => pt(weeks.length + i, f.low)).reverse(),
   ].join(" ");
   const divider = M.l + band * weeks.length;
+  // Every other week, or every third on a phone so 14px dates never touch.
+  const every = band * 2 < 56 ? 3 : 2;
 
   const lo = Math.min(...forecast.map((f) => f.low));
   const hi = Math.max(...forecast.map((f) => f.high));
@@ -109,7 +111,7 @@ export function ForecastChart({ weeks, forecast }: { weeks: WeekPoint[]; forecas
           ))}
 
           {[...weeks.map((w) => w.weekStart), ...forecast.map((f) => f.weekStart)].map((key, i) =>
-            i % 2 === 0 ? (
+            i % every === 0 ? (
               <text key={key} x={x(i)} y={H - 8} textAnchor="middle" style={TEXT}>
                 {shortDate(key)}
               </text>
