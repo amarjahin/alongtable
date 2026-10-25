@@ -14,9 +14,9 @@ export function Header() {
         <Link href="/" className="text-lg font-semibold">
           ALongTable
         </Link>
-        <ul className="flex gap-5 text-sm">
+        <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
           {links.map((l) => (
-            <li key={l.href}>
+            <li key={l.href} className="whitespace-nowrap">
               <Link href={l.href} className="text-neutral-700 hover:text-neutral-900">
                 {l.label}
               </Link>
