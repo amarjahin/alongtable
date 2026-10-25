@@ -2,11 +2,22 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
-export type DayPoint = { key: string; label: string; weekday: string; guests: number; events: number };
+export type DayPoint = {
+  key: string;
+  label: string;
+  weekday: string;
+  /** Seats reserved by guests. */
+  guests: number;
+  events: number;
+  /** Seats on offer that day (booked + still open). */
+  seats: number;
+  spaces: number;
+};
 
-// Chart tokens (single series: blue 450, hover blue 550, hairline grid, muted axis text).
-const BAR = "#2a78d6";
-const BAR_ACTIVE = "#1c5cab";
+// Chart tokens: booked = blue 450, open seats = blue 150 (same hue, lighter), hover = blue 550.
+const BOOKED = "#2a78d6";
+const BOOKED_ACTIVE = "#1c5cab";
+const OPEN = "#b7d3f6";
 const GRID = "#e1e0d9";
 const AXIS = "#c3c2b7";
 const BAND = "#f4f3ef";
@@ -17,11 +28,21 @@ const M = { t: 18, r: 8, b: 34, l: 28 };
 const MAX_BAR = 24;
 const GAP = 2;
 
-/** Column with a 4px rounded top and a square base, so it grows from the baseline. */
-function columnPath(x: number, y: number, w: number, h: number) {
-  const r = Math.min(4, w / 2, h);
-  return `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`;
+/** Column with a rounded top (radius `r`, capped) and a square base, growing from the baseline. */
+function columnPath(x: number, y: number, w: number, h: number, r: number) {
+  const k = Math.min(r, w / 2, h);
+  return `M${x},${y + h} V${y + k} Q${x},${y} ${x + k},${y} H${x + w - k} Q${x + w},${y} ${x + w},${y + k} V${y + h} Z`;
 }
+
+/** Round a tick spacing up to 1, 2, 5 or 10 times a power of ten, so the axis shows round numbers. */
+function niceStep(raw: number) {
+  if (raw <= 1) return 1;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const f = raw / pow;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pow;
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function GuestsChart({ days }: { days: DayPoint[] }) {
   const [active, setActive] = useState<number | null>(null);
@@ -43,16 +64,15 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
     return () => ro.disconnect();
   }, []);
 
-  const max = Math.max(0, ...days.map((d) => d.guests));
-  const step = Math.max(1, Math.ceil(max / 3));
-  const top = step * 3;
+  const max = Math.max(0, ...days.map((d) => d.seats));
+  const step = niceStep(max / 4);
+  const top = Math.max(step, Math.ceil(max / step) * step);
   const plotW = W - M.l - M.r;
   const band = plotW / n;
   const barW = Math.max(4, Math.min(MAX_BAR, band - GAP * 2));
   const cx = (i: number) => M.l + band * i + band / 2;
   const y = (v: number) => M.t + (1 - v / top) * (H - M.t - M.b);
-  const peak = max > 0 ? days.findIndex((d) => d.guests === max) : -1;
-  const ticks = [0, 1, 2, 3].map((i) => i * step);
+  const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step);
   const a = active === null ? null : days[active];
 
   function onPointer(e: PointerEvent<SVGSVGElement>) {
@@ -71,6 +91,15 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <p className="mb-2 flex items-center gap-4 text-xs text-neutral-600">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-3 rounded-sm" style={{ background: BOOKED }} /> Booked
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-3 rounded-sm" style={{ background: OPEN }} /> Open seats
+        </span>
+      </p>
+
       <div ref={box} className="relative min-h-44 flex-1">
         <svg
           ref={svg}
@@ -78,7 +107,7 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
           className="absolute inset-0 block h-full w-full touch-pan-y rounded outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
           tabIndex={0}
           role="img"
-          aria-label={`Bar chart of guests booked per event day for the next ${n} days. Use the left and right arrow keys to read each day.`}
+          aria-label={`Bar chart of seats booked out of total seats for each of the next ${n} days. Use the left and right arrow keys to read each day.`}
           onPointerMove={onPointer}
           onPointerLeave={() => setActive(null)}
           onBlur={() => setActive(null)}
@@ -97,12 +126,17 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
 
           {days.map((d, i) => {
             const [month, day] = d.label.split(" ");
+            const x = cx(i) - barW / 2;
+            const full = d.seats > 0 && d.guests >= d.seats;
             return (
               <g key={d.key}>
+                {d.seats > 0 && (
+                  <path d={columnPath(x, y(d.seats), barW, y(0) - y(d.seats), 4)} fill={OPEN} />
+                )}
                 {d.guests > 0 && (
                   <path
-                    d={columnPath(cx(i) - barW / 2, y(d.guests), barW, y(0) - y(d.guests))}
-                    fill={active === i ? BAR_ACTIVE : BAR}
+                    d={columnPath(x, y(d.guests), barW, y(0) - y(d.guests), full ? 4 : 0)}
+                    fill={active === i ? BOOKED_ACTIVE : BOOKED}
                   />
                 )}
                 <text x={cx(i)} y={H - 18} textAnchor="middle" fontSize={11} fill={MUTED}>
@@ -116,17 +150,11 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
               </g>
             );
           })}
-
-          {peak >= 0 && (
-            <text x={cx(peak)} y={y(max) - 5} textAnchor="middle" fontSize={12} fontWeight={600} fill="#0b0b0b">
-              {max}
-            </text>
-          )}
         </svg>
 
         {a && active !== null && (
           <div
-            className="pointer-events-none absolute top-1 z-10 min-w-32 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs shadow-sm"
+            className="pointer-events-none absolute top-1 z-10 min-w-36 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs shadow-sm"
             style={{
               left: `${(cx(active) / W) * 100}%`,
               transform: active > n / 2 ? "translateX(calc(-100% - 12px))" : "translateX(12px)",
@@ -135,26 +163,42 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
             <p className="text-neutral-600">
               {a.weekday === "Today" ? "Today" : a.weekday}, {a.label}
             </p>
-            <p className="mt-1 flex items-center gap-2">
-              <span className="inline-block h-2 w-3 rounded-sm" style={{ background: BAR }} />
-              <span className="text-sm font-semibold text-neutral-950">{a.guests}</span>
-              <span className="text-neutral-600">{a.guests === 1 ? "guest" : "guests"}</span>
-            </p>
-            <p className="mt-0.5 text-neutral-600">
-              {a.events} {a.events === 1 ? "event" : "events"}
-            </p>
+            {a.seats === 0 ? (
+              <p className="mt-1 text-neutral-600">No spaces published</p>
+            ) : (
+              <>
+                <p className="mt-1 flex items-center gap-2">
+                  <span className="inline-block h-2 w-3 rounded-sm" style={{ background: BOOKED }} />
+                  <span className="text-sm font-semibold text-neutral-950">
+                    {a.guests} of {a.seats}
+                  </span>
+                  <span className="text-neutral-600">seats booked</span>
+                </p>
+                <p className="mt-0.5 flex items-center gap-2">
+                  <span className="inline-block h-2 w-3 rounded-sm" style={{ background: OPEN }} />
+                  <span className="text-neutral-600">{a.seats - a.guests} open</span>
+                </p>
+                <p className="mt-0.5 text-neutral-600">
+                  {plural(a.spaces, "space", "spaces")} · {plural(a.events, "event", "events")}
+                </p>
+              </>
+            )}
           </div>
         )}
 
         {max === 0 && active === null && (
           <p className="pointer-events-none absolute inset-x-0 top-1/3 text-center text-sm text-neutral-600">
-            No guests booked yet
+            No spaces published in the next {n} days
           </p>
         )}
       </div>
 
       <p className="sr-only" aria-live="polite">
-        {a ? `${a.weekday} ${a.label}: ${a.guests} ${a.guests === 1 ? "guest" : "guests"}, ${a.events} ${a.events === 1 ? "event" : "events"}` : ""}
+        {a
+          ? a.seats === 0
+            ? `${a.weekday} ${a.label}: no spaces published`
+            : `${a.weekday} ${a.label}: ${a.guests} of ${a.seats} seats booked, ${a.seats - a.guests} open, ${plural(a.events, "event", "events")}`
+          : ""}
       </p>
 
       <details className="mt-2 text-sm">
@@ -164,7 +208,9 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
             <tr>
               <th className="py-1 font-medium">Day</th>
               <th className="py-1 font-medium">Events</th>
-              <th className="py-1 font-medium">Guests booked</th>
+              <th className="py-1 font-medium">Booked</th>
+              <th className="py-1 font-medium">Open</th>
+              <th className="py-1 font-medium">Total seats</th>
             </tr>
           </thead>
           <tbody>
@@ -175,6 +221,8 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
                 </td>
                 <td className="py-1 tabular-nums">{d.events}</td>
                 <td className="py-1 tabular-nums">{d.guests}</td>
+                <td className="py-1 tabular-nums">{d.seats - d.guests}</td>
+                <td className="py-1 tabular-nums">{d.seats}</td>
               </tr>
             ))}
           </tbody>

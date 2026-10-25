@@ -63,6 +63,8 @@ async function Dashboard({
     weekday: d.weekday,
     guests: stats[d.value]?.guests ?? 0,
     events: stats[d.value]?.events ?? 0,
+    seats: stats[d.value]?.seats ?? 0,
+    spaces: stats[d.value]?.spaces ?? 0,
   }));
 
   return (
@@ -106,8 +108,8 @@ async function Dashboard({
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <section className="flex flex-col rounded-xl border border-neutral-200 bg-white p-4">
-          <h2 className="font-semibold">Guests booked</h2>
-          <p className="mb-2 text-sm text-neutral-600">By event day, next 14 days</p>
+          <h2 className="font-semibold">Seats booked</h2>
+          <p className="mb-2 text-sm text-neutral-600">Booked out of total seats, next 14 days</p>
           <GuestsChart days={chartDays} />
         </section>
 

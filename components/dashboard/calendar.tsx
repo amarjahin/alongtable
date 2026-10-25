@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { DayStats } from "@/lib/stats";
 
-// One-hue sequential ramp (blue 100–250): more guests, darker cell.
-const RAMP = ["#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef"];
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const BOOKED = "#2a78d6";
+const OPEN = "#b7d3f6";
 
 const shift = (month: string, by: number) => {
   const [y, m] = month.split("-").map(Number);
@@ -11,23 +11,16 @@ const shift = (month: string, by: number) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 };
 
-function Icon({ kind }: { kind: "event" | "guest" }) {
+function EventIcon() {
   return (
-    <svg viewBox="0 0 16 16" width={12} height={12} aria-hidden className="shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5}>
-      {kind === "event" ? (
-        <>
-          <rect x={2} y={3} width={12} height={11} rx={2} />
-          <path d="M2 7h12M5.5 1.5v3M10.5 1.5v3" />
-        </>
-      ) : (
-        <>
-          <circle cx={8} cy={5.5} r={2.5} />
-          <path d="M3 14c0-3 2.2-4.5 5-4.5s5 1.5 5 4.5" />
-        </>
-      )}
+    <svg viewBox="0 0 16 16" width={11} height={11} aria-hidden className="shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <rect x={2} y={3} width={12} height={11} rx={2} />
+      <path d="M2 7h12M5.5 1.5v3M10.5 1.5v3" />
     </svg>
   );
 }
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function Calendar({
   month,
@@ -46,7 +39,6 @@ export function Calendar({
   const rows = Array.from({ length: cells.length / 7 }, (_, r) => cells.slice(r * 7, r * 7 + 7));
 
   const key = (d: number) => `${month}-${String(d).padStart(2, "0")}`;
-  const maxGuests = Math.max(0, ...Array.from({ length: count }, (_, i) => stats[key(i + 1)]?.guests ?? 0));
   const title = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
   const nav = "rounded-md border border-neutral-300 px-2 py-0.5 text-sm hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-900 outline-none";
 
@@ -82,27 +74,35 @@ export function Calendar({
               {row.map((d, c) => {
                 if (d === null) return <td key={c} />;
                 const s = stats[key(d)];
-                const bucket = s ? Math.min(RAMP.length - 1, Math.ceil((s.guests / Math.max(1, maxGuests)) * RAMP.length) - 1) : -1;
                 const isToday = key(d) === todayKey;
+                const full = s && s.seats > 0 && s.guests >= s.seats;
+                const label = s
+                  ? `${plural(s.events, "event", "events")}, ${s.guests} of ${s.seats} seats booked, ${s.seats - s.guests} open`
+                  : "no spaces";
                 return (
                   <td
                     key={c}
-                    aria-label={`${title.split(" ")[0]} ${d}: ${s ? `${s.events} ${s.events === 1 ? "event" : "events"}, ${s.guests} ${s.guests === 1 ? "guest" : "guests"}` : "no events"}`}
-                    className={`h-12 rounded-md border align-top sm:h-11 ${isToday ? "border-neutral-900" : "border-neutral-200"}`}
-                    style={{ backgroundColor: bucket >= 0 ? RAMP[Math.max(0, bucket)] : "#fff" }}
+                    aria-label={`${title.split(" ")[0]} ${d}: ${label}`}
+                    className={`h-14 rounded-md border bg-white align-top ${isToday ? "border-neutral-900" : "border-neutral-200"}`}
                   >
                     <div className="flex h-full flex-col p-1 text-[11px] leading-tight">
-                      <span className={isToday ? "font-semibold" : "text-neutral-700"}>{d}</span>
-                      {s && (
-                        <div className="mt-auto flex flex-col text-neutral-950 sm:flex-row sm:gap-2">
-                          <span className="flex items-center gap-1">
-                            <Icon kind="event" />
+                      <div className="flex items-start justify-between gap-1">
+                        <span className={isToday ? "font-semibold" : "text-neutral-700"}>{d}</span>
+                        {s && s.events > 0 && (
+                          <span className="flex items-center gap-0.5 text-neutral-700">
+                            <EventIcon />
                             <b className="font-semibold">{s.events}</b>
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Icon kind="guest" />
-                            <b className="font-semibold">{s.guests}</b>
-                          </span>
+                        )}
+                      </div>
+                      {s && s.seats > 0 && (
+                        <div className="mt-auto">
+                          <p className="font-semibold text-neutral-950">
+                            {full ? "Full" : `${s.guests}/${s.seats}`}
+                          </p>
+                          <div className="mt-0.5 h-1 overflow-hidden rounded-full" style={{ background: OPEN }}>
+                            <div className="h-full rounded-full" style={{ width: `${Math.min(100, (s.guests / s.seats) * 100)}%`, background: BOOKED }} />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -115,14 +115,14 @@ export function Calendar({
       </table>
 
       <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600">
-        <span className="flex items-center gap-1"><Icon kind="event" /> events that day</span>
-        <span className="flex items-center gap-1"><Icon kind="guest" /> guests booked</span>
         <span className="flex items-center gap-1">
-          fewer
-          {RAMP.map((c) => (
-            <span key={c} className="inline-block h-3 w-4 rounded-sm border border-neutral-200" style={{ background: c }} />
-          ))}
-          more guests
+          <EventIcon /> events
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-1 w-6 overflow-hidden rounded-full" style={{ background: OPEN }}>
+            <span className="block h-full w-1/2 rounded-full" style={{ background: BOOKED }} />
+          </span>
+          seats booked / total
         </span>
       </p>
     </div>

@@ -10,17 +10,29 @@ export function pricePerGuest(priceInfo: string | null): number {
   return m ? Number(m[1]) : 0;
 }
 
-export type DayStats = { events: number; guests: number };
+export type DayStats = {
+  /** Spaces published that day, booked or not. */
+  spaces: number;
+  /** Events booked that day. */
+  events: number;
+  /** Seats on offer: a booked space counts its event's capacity, an open one its full capacity. */
+  seats: number;
+  /** Seats already reserved by guests. */
+  guests: number;
+};
 
-/** Booked events and guests per Seattle calendar day (keyed "YYYY-MM-DD"). */
+/** Spaces, events, seats and reserved seats per Seattle calendar day (keyed "YYYY-MM-DD"). */
 export function statsByDay(spaces: Space[]): Record<string, DayStats> {
   const out: Record<string, DayStats> = {};
   for (const s of spaces) {
-    if (!s.event) continue;
     const key = seattleDateKey(new Date(s.startsAt));
-    const day = (out[key] ??= { events: 0, guests: 0 });
-    day.events += 1;
-    day.guests += s.event.seatsTaken;
+    const day = (out[key] ??= { spaces: 0, events: 0, seats: 0, guests: 0 });
+    day.spaces += 1;
+    day.seats += s.event?.capacity ?? s.capacity;
+    if (s.event) {
+      day.events += 1;
+      day.guests += s.event.seatsTaken;
+    }
   }
   return out;
 }
