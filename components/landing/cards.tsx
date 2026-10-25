@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarBlank, Clock, MapPin } from "@phosphor-icons/react/ssr";
+import { CalendarBlank, Clock, MapPin, UsersThree } from "@phosphor-icons/react/ssr";
 import { SeatRow } from "@/components/ui/seat-row";
 import type { Event } from "@/lib/events";
 import type { AvailableSpace } from "@/lib/spaces";
@@ -117,6 +117,11 @@ export function SpaceTile({ space, i }: { space: AvailableSpace; i: number }) {
         <p className="alt-meta">
           <Clock size={20} aria-hidden="true" />
           <span className="tabular-nums">{formatTimeRange(start, end)}</span>
+        </p>
+        {/* On a photo card the capacity isn't on the cover, so it always appears in the text too. */}
+        <p className="alt-meta">
+          <UsersThree size={20} aria-hidden="true" />
+          <span>Up to {space.capacity} guests</span>
         </p>
         {space.priceInfo && <p className="alt-secondary line-clamp-1">{space.priceInfo}</p>}
       </div>
