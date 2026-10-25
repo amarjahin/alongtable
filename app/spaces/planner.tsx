@@ -2,6 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { AiTag } from "@/components/ui/ai-tag";
 import type { Plan, PlanRecommendation } from "@/lib/planner";
 import { formatDate, formatTimeRange } from "@/lib/time";
 import { SAMPLE_REQUEST, samplePlan } from "./sample-plan";
@@ -175,6 +176,7 @@ export function Planner() {
 function PlanResult({ plan, isSample }: { plan: Plan; isSample: boolean }) {
   return (
     <section aria-label="Your plan" className="flex flex-col gap-4">
+      <AiTag>drafted this event and picked these spaces. You review everything before booking.</AiTag>
       {isSample && (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Example only: these spaces are illustrative and can&apos;t be booked.

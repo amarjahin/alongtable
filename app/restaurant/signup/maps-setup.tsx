@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Switch } from "@base-ui/react/switch";
 import { CheckCircle, CircleNotch, Info, MapPin, WarningCircle } from "@phosphor-icons/react/ssr";
 import { StepBar, Steps, type Step } from "@/components/onboarding/steps";
+import { AiTag } from "@/components/ui/ai-tag";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { SeatRow } from "@/components/ui/seat-row";
 import type { RestaurantProfile, SpotSuggestion } from "@/lib/onboarding";
@@ -363,9 +364,11 @@ export function MapsSetup() {
         lead={source === "manual" ? "Here's what you entered. Fix anything that's wrong." : "Here's what we found. Check it and fix anything that's wrong."}
       >
         <form onSubmit={confirm} className="flex flex-col gap-5">
-          <span className={`alt-chip ${source === "live" ? "alt-chip--info" : ""} self-start`}>
-            {source === "live" ? "From Google and the web" : source === "sample" ? "Sample restaurant" : "Added by you"}
-          </span>
+          {source === "live" ? (
+            <AiTag>researched this on Google and the web. Check it below.</AiTag>
+          ) : (
+            <span className="alt-chip self-start">{source === "sample" ? "Sample restaurant" : "Added by you"}</span>
+          )}
           {source === "sample" && (
             <p className="alt-notice alt-notice--info">
               <Info {...icon} />
@@ -474,6 +477,7 @@ export function MapsSetup() {
     >
       {suggestions.length > 0 ? (
         <div className="flex flex-col gap-5">
+          <AiTag>suggested these dates. Only you can publish them.</AiTag>
           <ul key={shake} className={`alt-list rounded-control bg-sunken !px-4 ${shake ? "alt-shake" : ""}`} aria-label="Suggested dates">
             {suggestions.map((s, i) => (
               <DateRow

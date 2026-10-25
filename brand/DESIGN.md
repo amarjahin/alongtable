@@ -206,6 +206,7 @@ Use these for these meanings, everywhere. Don't swap in a different icon for the
 | Edit | `PencilSimple` |
 | Share | `ShareNetwork` |
 | Welcome, hello | `HandWaving` |
+| Made by ALong AI | `Sparkle` |
 
 ### Icon rules
 
@@ -271,6 +272,7 @@ Built on **Base UI** (unstyled, accessible React primitives). Base UI renders th
 | Tabs | `alt-tabs`, `alt-tab` | `Tabs.List`, `Tabs.Tab` | Sunken track, white selected tab. |
 | Dialog | `alt-dialog`, `alt-backdrop` | `Dialog.Popup`, `Dialog.Backdrop` | Confirmations before anything that can't be undone. |
 | Toast | `alt-toast` | `Toast.Root` | "You're in", "Space published". |
+| AI tag | `alt-chip alt-chip--info` + `Sparkle` icon, text "ALong AI" | none | On anything ALong AI wrote or picked (researched details, suggested dates, drafted events), followed by a short note on what the person still decides. React: `<AiTag>`. Never on numbers worked out by code or on things the person entered. |
 | Polaroid | `alt-polaroid` | none | Wraps an `<img>` and an optional caption. Expressive only. |
 
 ### The seat row

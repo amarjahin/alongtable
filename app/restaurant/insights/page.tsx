@@ -66,8 +66,10 @@ async function Insights() {
 
       <header className="flex flex-col gap-2">
         <p className="alt-label-text alt-secondary">{restaurant.name} · Last 8 weeks</p>
+        {/* Not AI: every number and sentence here is worked out from bookings, so no ALong AI tag. */}
         <h1 className="alt-display">{i.bestWeekday ? `Your ${i.bestWeekday.name}s are filling` : "How your tables are doing"}</h1>
         <p className="alt-lead alt-secondary">Here&apos;s what happened, and what we&apos;d do next.</p>
+        <span className="alt-chip mt-1 self-start">Calculated from your bookings, no AI</span>
       </header>
 
       {(move || i.filling) && (
