@@ -43,7 +43,28 @@ from events e
 join spaces s      on s.id = e.space_id
 join restaurants r on r.id = s.restaurant_id;
 
--- 3. Pins for the seeded restaurants (only where none is set yet).
+-- 3. /spaces (Host an event) shows available spaces on a map too.
+create or replace view available_spaces with (security_invoker = true) as
+select
+  s.id,
+  s.restaurant_id,
+  r.name      as restaurant_name,
+  r.location  as restaurant_location,
+  s.label,
+  s.starts_at,
+  s.ends_at,
+  s.capacity,
+  s.description,
+  s.price_info,
+  r.photo_url as restaurant_photo_url,
+  r.lat       as restaurant_lat,
+  r.lng       as restaurant_lng
+from spaces s
+join restaurants r on r.id = s.restaurant_id
+where s.status = 'available'
+  and s.starts_at > now();
+
+-- 4. Pins for the seeded restaurants (only where none is set yet).
 update restaurants set lat = 47.5784969, lng = -122.4111083 where lower(name) = 'il nido'       and lat is null; -- Alki Homestead
 update restaurants set lat = 47.6672,    lng = -122.3847    where lower(name) = 'harbor & pine' and lat is null; -- Ballard Ave NW (sample)
 update restaurants set lat = 47.6145,    lng = -122.3197    where lower(name) = 'saffron table' and lat is null; -- Pike/Pine (sample)

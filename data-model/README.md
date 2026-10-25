@@ -104,7 +104,7 @@ The function does not insert a reservation for the organizer.
 
 ### `available_spaces`
 
-`status = 'available'` and `starts_at > now()`, with restaurant name, location, restaurant photo (`restaurant_photo_url`), label, times, capacity, description, and price info. Powers `/spaces`.
+`status = 'available'` and `starts_at > now()`, with restaurant name, location, restaurant photo (`restaurant_photo_url`), label, times, capacity, description, price info, and the restaurant's map pin (`restaurant_lat`, `restaurant_lng`, nullable). Powers `/spaces`.
 
 ### `events_with_availability`
 

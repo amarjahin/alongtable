@@ -13,6 +13,9 @@ export type Space = {
   capacity: number;
   description: string | null;
   priceInfo: string | null;
+  /** The restaurant's map pin; null when it has none (or before add-coordinates.sql). */
+  lat?: number | null;
+  lng?: number | null;
   status: "available" | "booked";
   event: {
     id: string;
@@ -55,7 +58,11 @@ export type AvailableSpace = Omit<Space, "status" | "event">;
 type AvailableSpaceRow = Pick<
   SpaceWithBookingRow,
   "id" | "restaurant_name" | "restaurant_location" | "restaurant_photo_url" | "label" | "starts_at" | "ends_at" | "capacity" | "description" | "price_info"
->;
+> & {
+  /** Both absent until supabase/add-coordinates.sql has been run (and on spaces_with_booking). */
+  restaurant_lat?: number | null;
+  restaurant_lng?: number | null;
+};
 
 /**
  * Restaurant dashboard (/restaurant): every space, including past and booked ones.
@@ -115,6 +122,8 @@ function toAvailableSpace(r: AvailableSpaceRow): AvailableSpace {
     capacity: r.capacity,
     description: r.description,
     priceInfo: r.price_info,
+    lat: r.restaurant_lat ?? null,
+    lng: r.restaurant_lng ?? null,
   };
 }
 

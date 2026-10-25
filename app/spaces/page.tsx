@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { SpaceCard } from "@/components/space-card";
+import { SpacesMap } from "@/components/spaces-map";
 import { listAvailableSpaces } from "@/lib/spaces";
 import { Planner } from "./planner";
 
@@ -16,7 +16,8 @@ const tabs: { id: Tab; label: string; href: string }[] = [
 
 export default function SpacesPage({ searchParams }: PageProps<"/spaces">) {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
+    // Wide for the Browse tab's map; the Plan with AI tab keeps a narrow column below.
+    <main className="mx-auto w-full max-w-7xl px-4 py-6">
       <h1 className="alt-h2">Host an event</h1>
       <Suspense fallback={<p className="alt-secondary mt-6">Loading…</p>}>
         <HostOptions searchParams={searchParams} />
@@ -47,16 +48,16 @@ async function HostOptions({ searchParams }: { searchParams: PageProps<"/spaces"
       </nav>
 
       {tab === "plan" ? (
-        <>
+        <div className="max-w-2xl">
           <p className="alt-secondary mb-6">
             Describe the gathering you have in mind. We&apos;ll search available restaurant spaces, suggest the best
             fits and draft your event. Nothing is booked until you review it and publish.
           </p>
           <Planner />
-        </>
+        </div>
       ) : (
         <>
-          <p className="alt-secondary mb-6">
+          <p className="alt-secondary mb-4">
             Pick an available restaurant space and turn it into an event others can join.
           </p>
           <Suspense fallback={<p className="alt-secondary">Loading spaces…</p>}>
@@ -86,13 +87,5 @@ async function Spaces() {
     );
   }
 
-  return (
-    <ul className="flex flex-col gap-3">
-      {spaces.map((s) => (
-        <li key={s.id}>
-          <SpaceCard space={s} />
-        </li>
-      ))}
-    </ul>
-  );
+  return <SpacesMap spaces={spaces} />;
 }

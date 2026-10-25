@@ -82,7 +82,9 @@ select
   s.capacity,
   s.description,
   s.price_info,
-  r.photo_url as restaurant_photo_url
+  r.photo_url as restaurant_photo_url,
+  r.lat       as restaurant_lat,
+  r.lng       as restaurant_lng
 from spaces s
 join restaurants r on r.id = s.restaurant_id
 where s.status = 'available'
