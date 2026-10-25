@@ -112,34 +112,37 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
 
 ### Done
 
-- **Phase 0, setup:** Next.js app, Supabase project, shared header, placeholder at `/`, Vercel deploy with Supabase env vars.
+- **Phase 0, setup:** Next.js app, Supabase project, shared header, Vercel deploy (every push to `main` deploys).
 - **Phase 1, database:** `supabase/schema.sql` implements the data model and is live in Supabase.
-- **Phase 2, Restaurant Owner UI:** `/restaurant` and `/restaurant/new` read and write Supabase.
-- **Data functions** for Phases 3–5 are built and tested (see [Data functions](#data-functions-lib)).
-
-### Still open from Phase 2
-
-- [x] **R1 prefill:** done via restaurant sign-up (`/restaurant/signup`). A restaurant registers once by name and location (or signs back in by entering the same details). The id is kept in a cookie, `/restaurant/new` no longer asks for name and location, and `/restaurant` lists only that restaurant's spaces. No schema change.
-- [x] **Restaurant dashboard:** stat tiles, a guests-booked line chart (next 14 days) and a month calendar of events and guests per day, on `/restaurant`.
-- Dev only: `/restaurant` shows "Demo: simulate booking" and "Demo: a guest joins" buttons under `npm run dev`. They call the real `create_event_for_space` and `reserve_seat` and write real rows; run `supabase/reset.sql` to clear them.
+- **Phase 2, Restaurant Owner UI:**
+  - Restaurant sign-up (`/restaurant/signup`): register once by name and location, or sign back in with the same details. The restaurant id is kept in a cookie; `/restaurant/new` doesn't ask for name and location again.
+  - Publish a space (`/restaurant/new`) with tile choices for area, day, time slot, seats, features and minimum spend.
+  - Dashboard (`/restaurant`): only that restaurant's spaces, stat tiles, a guests chart, a calendar, a booked/open filter, and cancelling events or deleting spaces with confirmation.
+  - Photos for restaurants and events (Supabase Storage).
+  - Dev only: "Demo: simulate booking" and "Demo: a guest joins" buttons under `npm run dev` write real rows; run `supabase/reset.sql` to clear them.
+- **Phase 3, creating events:** browse spaces, space details, create event, event created (see checklist below).
+- **Phase 4, joining events:** discover events, event details, join, booking confirmation (see checklist below).
+- **Phase 5, landing page** at `/`.
+- **Phase 8, AI workflows:** the event planner and restaurant setup from Google Maps (see [AI workflows](#ai-workflows)).
+- **Maps:** Find events (`/events`) and Host an event → Browse spaces (`/spaces`) show a map of Seattle with the list on the right (below it on phones). Tapping a pin narrows the list to that restaurant. Pins come from the Google Maps setup or from geocoding the restaurant's location (OpenStreetMap). Needs `supabase/add-coordinates.sql` on an existing database.
 
 ### Phase 3: Regular User UI, creating events (≈3h)
 
-- [ ] **U1 Browse spaces** (`/spaces`): `listAvailableSpaces()`, each with restaurant, location, date, time and capacity.
-- [ ] **Space details** (`/spaces/[id]`): full details and a **"Book this space & create event"** button.
-- [ ] **U2 Create event** (`/spaces/[id]/create-event`): a form with title, description, number of spots (1 up to the space's capacity), and organizer name and email. It calls `createEventForSpace()`.
-- [ ] **Event created** (`/events/[id]/created`): a success screen with a link to the public event page.
-- [ ] Errors: show the returned `message` (e.g. when someone else just booked the space) and link back to `/spaces`.
+- [x] **U1 Browse spaces** (`/spaces`): `listAvailableSpaces()`, each with restaurant, location, date, time and capacity. Now shown on a map with the list on the right.
+- [x] **Space details** (`/spaces/[id]`): full details and a **"Book this space & create event"** button.
+- [x] **U2 Create event** (`/spaces/[id]/create-event`): a form with title, description, number of spots (1 up to the space's capacity), and organizer name and email. It calls `createEventForSpace()`.
+- [x] **Event created** (`/events/[id]/created`): a success screen with a link to the public event page.
+- [x] Errors: show the returned `message` (e.g. when someone else just booked the space) and link back to `/spaces`.
 
 ✅ Done when: after an event is created, its space no longer appears in `/spaces`, the second space still does, and `/restaurant` shows the space as Booked.
 
 ### Phase 4: Regular User UI, joining events (≈3h)
 
-- [ ] **U3 Discover events** (`/events`): `listUpcomingEvents()`, each with title, description excerpt, date, time, location and **"X spots left"** (or a **Sold out** badge).
-- [ ] **Event details** (`/events/[id]`): full details, spots left, and a **Join** button that is disabled when the event is sold out.
-- [ ] **U4 Join event** (`/events/[id]/join`): a name and email form that calls `reserveSeat()`. Disable the button while submitting.
-- [ ] **Booking confirmation** (`/reservations/[code]`): confirmation code, event details, and "No payment collected."
-- [ ] Error states: show the returned `message` for `EVENT_FULL` and `ALREADY_RESERVED`.
+- [x] **U3 Discover events** (`/events`): `listUpcomingEvents()`, each with title, description excerpt, date, time, location and **"X spots left"** (or a **Sold out** badge). Now shown on a map with the list on the right.
+- [x] **Event details** (`/events/[id]`): full details, spots left, and a **Join** button that is disabled when the event is sold out.
+- [x] **U4 Join event** (`/events/[id]/join`): a name and email form that calls `reserveSeat()`. Disable the button while submitting.
+- [x] **Booking confirmation** (`/reservations/[code]`): confirmation code, event details, and "No payment collected."
+- [x] Error states: show the returned `message` for `EVENT_FULL` and `ALREADY_RESERVED`.
 
 ✅ Done when: joining moves the event from 10 to 9 spots left on the list, detail and restaurant pages, and the count is unchanged after a refresh.
 
@@ -161,12 +164,16 @@ The landing page (`/`) is the first thing judges see. It should explain the prod
 
 ### Phase 6: Polish (≈2h)
 
+Partly done: the new screens (maps, AI planner, Google Maps setup) were checked at phone width, but not every page has been reviewed, and there's no one-click reset yet.
+
 - [ ] Mobile-first layout checked at phone width (375px)
 - [ ] Loading, empty ("No events yet"), error and success states on every form
 - [ ] Consistent date and time formatting in the Seattle timezone
 - [ ] Make the reset script easy to run before the demo (an npm script or a hidden `/admin/reset` page)
 
 ### Phase 7: Demo verification (must all pass, from PRD §8)
+
+Not run yet. Every feature it needs is built; run it end to end on the live site before the demo.
 
 - [ ] 1. Restaurant owner publishes **two spaces with 10 seats each**.
 - [ ] 2. User browses available spaces.
@@ -203,17 +210,12 @@ Pages call these from Server Components or server actions. They are server-only.
 
 `createEventForSpace` and `reserveSeat` return `{ ok: true, data }` or `{ ok: false, code, message }`. Show `message` to the user. `code` is one of `SPACE_NOT_FOUND`, `SPACE_NOT_AVAILABLE`, `CAPACITY_INVALID`, `EVENT_NOT_FOUND`, `EVENT_FULL` or `ALREADY_RESERVED`. Unexpected database errors throw. Validate form fields (non-empty, email format) in the server action before calling.
 
-## Suggested team split
+## What's left
 
-| Workstream | Phases |
-|---|---|
-| Backend / data | Server actions for 3–4, then Phase 8 (AI) |
-| Frontend: Restaurant UI | R1 prefill, then 6 |
-| Frontend: User UI | 3, 4, then 5 (landing) |
-| PM / QA | Demo script, landing page copy, Phase 7 checklist, Phase 8 |
-
-Phases 3–5 can start now: the data functions are ready.
+1. **Phase 7 demo run** on https://alongtable.vercel.app, start to finish, with fresh data (`supabase/reset.sql`, then `seed.sql`).
+2. **Phase 6 polish:** a phone-width pass over every page, and an easy reset before the demo.
+3. **Before judging:** the AI features use an Anthropic key that expires; swap in a fresh one on Vercel if judging runs past its expiry.
 
 ## Out of scope for V0
 
-Payments, revenue sharing, reviews, chat, waitlists, recurring availability, analytics, cancellations, and auth (PRD §7).
+Payments, revenue sharing, reviews, chat, waitlists, recurring availability, guest cancellations, and auth (PRD §7). Restaurants can cancel events and delete spaces from their dashboard.
