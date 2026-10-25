@@ -85,15 +85,15 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
 
 The landing page (`/`) is the first thing judges see. It should explain the product in five seconds and send each type of visitor to the right flow.
 
-- [ ] **Hero**: "Turn empty tables into thriving communities." A one-line subhead (restaurants fill slow nights, people meet over a shared table) and three CTAs:
+- [x] **Hero**: "Turn empty tables into thriving communities." A one-line subhead (restaurants fill slow nights, people meet over a shared table) and three CTAs:
   - **Find an event** → `/events` (primary)
   - **Host an event** → `/spaces`
   - **List your space** → `/restaurant`
-- [ ] **How it works**: three steps with icons. A restaurant lists a table, a user turns it into an event, and others join for a seat.
-- [ ] **Upcoming events**: the next 3 events from `listUpcomingEvents({ limit: 3 })`, shown as cards with spots left. Each card links to `/events/[id]`. If there are no events yet, show "Be the first to host" linking to `/spaces`. This proves the page reads live data.
-- [ ] **For restaurants**: a short pitch (fill off-peak seats, no setup cost, no payments in V0) with a **List your space** CTA.
-- [ ] **Footer**: one line about the project and hackathon, with a link to the repo.
-- [ ] Looks good at phone width, loads fast (server component), and has a page title and meta description set.
+- [x] **How it works**: three steps with icons. A restaurant lists a table, a user turns it into an event, and others join for a seat.
+- [x] **Upcoming events**: the next 3 events from `listUpcomingEvents({ limit: 3 })`, shown as cards with spots left. Each card links to `/events/[id]`. If there are no events yet, show "Be the first to host" linking to `/spaces`. This proves the page reads live data.
+- [x] **For restaurants**: a short pitch (fill off-peak seats, no setup cost, no payments in V0) with a **List your space** CTA.
+- [x] **Footer**: one line about the project and hackathon, with a link to the repo.
+- [x] Looks good at phone width, loads fast (server component), and has a page title and meta description set.
 
 ✅ Done when: from `/`, a first-time visitor reaches each of the three flows in one click, and a newly created event appears in "Upcoming events" after a refresh.
 
