@@ -21,6 +21,8 @@
   --color-apricot: var(--alt-apricot);
   --color-sky: var(--alt-sky);
   --color-problem: var(--alt-red);
+  --color-blush: var(--alt-blush);
+  --color-basil-deep: var(--alt-basil-deep);
   --radius-card: var(--alt-radius-card);
   --radius-control: var(--alt-radius-control);
   --radius-small: var(--alt-radius-small);

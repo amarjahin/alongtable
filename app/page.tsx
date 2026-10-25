@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
-import { EventCard } from "@/components/event-card";
+import { Suspense } from "react";
+import { CalendarCheck, Clock, MapPin, Storefront, UsersThree } from "@phosphor-icons/react/ssr";
+import { EventsRow } from "@/components/landing/events-row";
+import { Row } from "@/components/landing/row";
+import { SpaceTile, cover } from "@/components/landing/cards";
 import { ButtonLink } from "@/components/ui/button";
-import { listUpcomingEvents } from "@/lib/events";
+import { SeatRow } from "@/components/ui/seat-row";
+import { listUpcomingEvents, type Event } from "@/lib/events";
+import { listAvailableSpaces } from "@/lib/spaces";
+import { dateParts, formatTimeRange, seattleDateKey, upcomingDays } from "@/lib/time";
 
 export const metadata: Metadata = {
   title: "ALongTable · Turn empty tables into thriving communities",
@@ -13,168 +18,194 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <main className="w-full">
-      <Hero />
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-4 py-10 sm:py-16">
+      <section className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
+        <div className="flex flex-col items-start gap-5">
+          <p className="alt-label-text alt-secondary">Shared tables in Seattle</p>
+          <h1 className="alt-hero">Pull up a chair.</h1>
+          <p className="alt-lead alt-secondary max-w-md">
+            Join a shared dinner at a restaurant near you, or open a table at yours.
+          </p>
+          <div className="flex flex-wrap gap-3 pt-1">
+            <ButtonLink href="/events">Find an event</ButtonLink>
+            <ButtonLink href="/spaces" variant="secondary">
+              Host an event
+            </ButtonLink>
+          </div>
+        </div>
+        <Suspense fallback={<div className="alt-card h-[420px] animate-none bg-sunken" aria-busy="true" />}>
+          <NextTable />
+        </Suspense>
+      </section>
+
+      <Suspense fallback={<RowSkeleton />}>
+        <Discover />
+      </Suspense>
+
       <HowItWorks />
-      <UpcomingEvents />
       <ForRestaurants />
       <Footer />
     </main>
   );
 }
 
-function Hero() {
-  return (
-    <section className="mx-auto max-w-3xl px-4 pb-14 pt-16 text-center sm:pt-24">
-      <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-        Turn empty tables into thriving communities.
-      </h1>
-      <p className="mx-auto mt-4 max-w-xl text-pretty text-lg text-neutral-600">
-        Restaurants fill their slow nights. People meet over a shared table.
-      </p>
-      <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-        <ButtonLink href="/events">Find an event</ButtonLink>
+/** The soonest event that still has seats, shown large: the table is the product. */
+async function NextTable() {
+  const events = await listUpcomingEvents({ limit: 6 });
+  const event: Event | undefined = events.find((e) => e.seatsLeft > 0) ?? events[0];
+
+  if (!event) {
+    return (
+      <div className="alt-card flex flex-col items-start gap-3 !p-8">
+        <h2 className="alt-h2">Be the first to host</h2>
+        <p className="alt-secondary">No tables are open yet. Pick a restaurant space and start one.</p>
         <ButtonLink href="/spaces" variant="secondary">
           Host an event
         </ButtonLink>
-        <ButtonLink href="/restaurant" variant="secondary">
-          List your space
+      </div>
+    );
+  }
+
+  const start = new Date(event.startsAt);
+  const end = new Date(event.endsAt);
+  const p = dateParts(start);
+  const c = cover(0);
+
+  return (
+    <div className="alt-card flex flex-col gap-5 !p-4">
+      <div className={`${c.bg} ${c.text} flex aspect-[16/9] items-end justify-between rounded-photo p-5`}>
+        <span className="flex items-baseline gap-3">
+          <span className="alt-hero">{p.day}</span>
+          <span className="alt-lead font-semibold">{p.month}</span>
+        </span>
+        <span className="alt-label-text uppercase tracking-wide">{p.weekday}</span>
+      </div>
+      <div className="flex flex-col gap-2 px-1">
+        <p className="alt-label-text alt-secondary">Next table</p>
+        <h2 className="alt-title">{event.title}</h2>
+        <p className="alt-meta">
+          <MapPin size={20} aria-hidden="true" />
+          {event.restaurantName} · {event.location}
+        </p>
+        <p className="alt-meta">
+          <Clock size={20} aria-hidden="true" />
+          <span className="tabular-nums">{formatTimeRange(start, end)}</span>
+        </p>
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-4 px-1 pb-1">
+        <SeatRow total={event.capacity} taken={event.capacity - event.seatsLeft} large />
+        <ButtonLink href={`/events/${event.id}`} variant="secondary">
+          {event.seatsLeft > 0 ? "Pull up a chair" : "See the table"}
         </ButtonLink>
       </div>
-    </section>
+    </div>
   );
 }
 
-const steps: { title: string; body: string; icon: ReactNode }[] = [
+async function Discover() {
+  const events = await listUpcomingEvents({ limit: 12 }); // reads the clock, so everything below is request-time
+  const spaces = (await listAvailableSpaces()).slice(0, 8);
+  const todayKey = seattleDateKey(new Date());
+  const weekKeys = upcomingDays(7).map((d) => d.value);
+
+  return (
+    <div className="flex flex-col gap-14">
+      {events.length === 0 ? (
+        <section className="alt-card flex flex-col items-start gap-3">
+          <h2 className="alt-h2">Upcoming events</h2>
+          <p className="alt-secondary">No events yet. Book a restaurant space and be the first to host.</p>
+          <ButtonLink href="/spaces">Host an event</ButtonLink>
+        </section>
+      ) : (
+        <EventsRow events={events} todayKey={todayKey} weekKeys={weekKeys} />
+      )}
+
+      {spaces.length > 0 && (
+        <Row title="Host your own dinner" href="/spaces" linkLabel="See all open spaces">
+          {spaces.map((s, i) => (
+            <li key={s.id}>
+              <SpaceTile space={s} i={i} />
+            </li>
+          ))}
+        </Row>
+      )}
+    </div>
+  );
+}
+
+function RowSkeleton() {
+  return (
+    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading events">
+      <div className="h-10 w-64 rounded-small bg-sunken" />
+      <div className="flex gap-4 overflow-hidden">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="aspect-[4/3] w-[272px] shrink-0 rounded-photo bg-sunken" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const steps = [
   {
-    title: "A restaurant lists a table",
-    body: "Owners publish empty seating for a date and time, with how many people it fits.",
-    icon: (
-      // Storefront
-      <path d="M3 9.5 4.5 4h15L21 9.5M3 9.5a3 3 0 0 0 6 0m-6 0h18m-12 0a3 3 0 0 0 6 0m0 0a3 3 0 0 0 6 0M5 12v8h14v-8M10 20v-5h4v5" />
-    ),
+    icon: Storefront,
+    title: "Restaurants list a table",
+    body: "Owners publish empty seats for a date and time, and say how many people fit.",
   },
   {
+    icon: CalendarCheck,
     title: "Someone turns it into an event",
-    body: "Anyone books the space, names the gathering, and sets how many spots are open.",
-    icon: (
-      // Calendar with a plus
-      <path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4m-4 6v5m-2.5-2.5h5" />
-    ),
+    body: "Anyone books the space, names the gathering and sets how many spots are open.",
   },
   {
-    title: "Others join for a seat",
-    body: "People browse upcoming events and reserve a seat with just a name and email.",
-    icon: (
-      // Two people
-      <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6 9a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6m2 15h3a6 6 0 0 0-4.5-5.8" />
-    ),
+    icon: UsersThree,
+    title: "Guests pull up a chair",
+    body: "People browse events and reserve a seat with just a name and email.",
   },
 ];
 
 function HowItWorks() {
   return (
-    <section className="border-y border-neutral-200 bg-neutral-50">
-      <div className="mx-auto max-w-5xl px-4 py-14">
-        <h2 className="text-center text-2xl font-semibold">How it works</h2>
-        <ol className="mt-8 grid gap-6 sm:grid-cols-3">
-          {steps.map((s, i) => (
-            <li key={s.title} className="rounded-xl border border-neutral-200 bg-white p-5">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="size-8 text-neutral-900"
-                aria-hidden
-              >
-                {s.icon}
-              </svg>
-              <p className="mt-4 text-xs font-medium uppercase tracking-wide text-neutral-500">Step {i + 1}</p>
-              <h3 className="mt-1 font-semibold">{s.title}</h3>
-              <p className="mt-1 text-sm text-neutral-600">{s.body}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
+    <section className="flex flex-col gap-8">
+      <h2 className="alt-h2">How it works</h2>
+      <ol className="grid gap-8 md:grid-cols-3">
+        {steps.map((s) => (
+          <li key={s.title} className="flex flex-col gap-3">
+            <s.icon size={48} weight="duotone" aria-hidden="true" className="alt-icon alt-icon--lg alt-icon--fill-blush" />
+            <h3 className="alt-title">{s.title}</h3>
+            <p className="alt-secondary">{s.body}</p>
+          </li>
+        ))}
+      </ol>
     </section>
-  );
-}
-
-function UpcomingEvents() {
-  return (
-    <section className="mx-auto max-w-5xl px-4 py-14">
-      <div className="flex items-end justify-between gap-4">
-        <h2 className="text-2xl font-semibold">Upcoming events</h2>
-        <Link href="/events" className="text-sm font-medium text-neutral-700 hover:text-neutral-900">
-          See all →
-        </Link>
-      </div>
-      <Suspense fallback={<p className="mt-6 text-sm text-neutral-500">Loading events…</p>}>
-        <EventList />
-      </Suspense>
-    </section>
-  );
-}
-
-async function EventList() {
-  const events = await listUpcomingEvents({ limit: 3 });
-
-  if (events.length === 0) {
-    return (
-      <div className="mt-6 rounded-xl border border-dashed border-neutral-300 p-10 text-center">
-        <p className="font-medium">Be the first to host</p>
-        <p className="mb-4 mt-1 text-sm text-neutral-600">No events yet. Book a restaurant space and start one.</p>
-        <ButtonLink href="/spaces">Host an event</ButtonLink>
-      </div>
-    );
-  }
-
-  return (
-    <ul className="mt-6 grid gap-4 md:grid-cols-3">
-      {events.map((e) => (
-        <li key={e.id}>
-          <EventCard event={e} />
-        </li>
-      ))}
-    </ul>
   );
 }
 
 function ForRestaurants() {
   return (
-    <section className="mx-auto max-w-5xl px-4 pb-14">
-      <div className="flex flex-col items-start gap-6 rounded-2xl bg-neutral-900 p-8 text-white sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold">Own a restaurant?</h2>
-          <ul className="mt-3 flex flex-col gap-1 text-sm text-neutral-300">
-            <li>Fill off-peak seats with new groups of guests.</li>
-            <li>No setup cost. Publish an empty table in a few taps.</li>
-            <li>No payments run through ALongTable in V0.</li>
-          </ul>
-        </div>
-        <Link
-          href="/restaurant"
-          className="inline-flex shrink-0 items-center justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900"
-        >
-          List your space
-        </Link>
+    <section className="alt-band-deep flex flex-col items-start gap-8 rounded-card p-8 sm:flex-row sm:items-center sm:justify-between sm:p-12">
+      <div className="flex flex-col gap-3">
+        <h2 className="alt-h2">Own a restaurant?</h2>
+        <p className="alt-lead alt-secondary max-w-md">
+          Fill your slow nights with guests who want to be there. Publishing an empty table takes a few taps, and it
+          costs nothing to set up.
+        </p>
+        <p className="alt-secondary">No payments run through ALongTable yet.</p>
       </div>
+      <ButtonLink href="/restaurant" variant="secondary" className="shrink-0">
+        List your space
+      </ButtonLink>
     </section>
   );
 }
 
 function Footer() {
   return (
-    <footer className="border-t border-neutral-200">
-      <p className="mx-auto max-w-5xl px-4 py-6 text-center text-sm text-neutral-500">
-        ALongTable is a V0 hackathon prototype connecting restaurants with people who want to gather.{" "}
-        <a href="https://github.com/amarjahin/alongtable" className="font-medium underline hover:text-neutral-900">
-          View the code on GitHub
-        </a>
-      </p>
+    <footer className="flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-t border-divider pt-8">
+      <p className="alt-secondary">ALongTable is a V0 hackathon prototype connecting restaurants with people who want to gather.</p>
+      <a href="https://github.com/amarjahin/alongtable" className="alt-link">
+        View the code on GitHub
+      </a>
     </footer>
   );
 }

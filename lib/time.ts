@@ -55,3 +55,9 @@ export function upcomingDays(count: number): DayOption[] {
 export function seattleDateKey(d: Date): string {
   return d.toLocaleDateString("en-CA", { timeZone: TZ });
 }
+
+/** Weekday, day and month of an instant as a Seattle calendar day, e.g. { weekday: "Tue", day: "27", month: "Oct" }. */
+export function dateParts(d: Date): { weekday: string; day: string; month: string } {
+  const part = (o: Intl.DateTimeFormatOptions) => d.toLocaleDateString("en-US", { timeZone: TZ, ...o });
+  return { weekday: part({ weekday: "short" }), day: part({ day: "numeric" }), month: part({ month: "short" }) };
+}
