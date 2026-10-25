@@ -28,9 +28,9 @@ export type Insights = {
   /** Emails with reservations at 2 or more distinct events. */
   repeatGuests: number;
   distinctGuests: number;
-  /** The last 8 Seattle weeks (Monday start), oldest first; the last is the current week. */
+  /** The last 8 completed Seattle weeks (Monday start), oldest first. */
   weeks: WeekPoint[];
-  /** The next 4 weeks. */
+  /** The current week and the 3 after it. */
   forecast: ForecastPoint[];
   bestWeekday: { name: string; fillRate: number; events: number } | null;
   lateWeekday: string | null;
@@ -95,9 +95,10 @@ export function computeInsights({ spaces, reservations }: InsightsInput, now: Da
   }
   const repeatGuests = [...eventsByEmail.values()].filter((e) => e.size >= 2).length;
 
-  // Last 8 weeks, ending with the current one, then 4 forecast weeks.
+  // The 8 completed weeks before this one, then 4 forecast weeks starting with this one.
+  // A half-finished week would read as a slump, so it's forecast, not history.
   const thisWeek = weekStartOf(now);
-  const weeks: WeekPoint[] = Array.from({ length: 8 }, (_, i) => ({ weekStart: addDays(thisWeek, (i - 7) * 7), seatsBooked: 0, seatsOffered: 0 }));
+  const weeks: WeekPoint[] = Array.from({ length: 8 }, (_, i) => ({ weekStart: addDays(thisWeek, (i - 8) * 7), seatsBooked: 0, seatsOffered: 0 }));
   for (const s of past) {
     const w = weeks.find((x) => x.weekStart === weekStartOf(new Date(s.startsAt)));
     if (!w) continue;
@@ -107,7 +108,7 @@ export function computeInsights({ spaces, reservations }: InsightsInput, now: Da
   const recent = weeks.slice(-4).map((w) => w.seatsBooked);
   const expected = Math.round(recent.reduce((a, b) => a + b, 0) / recent.length);
   const forecast: ForecastPoint[] = Array.from({ length: 4 }, (_, i) => ({
-    weekStart: addDays(thisWeek, (i + 1) * 7),
+    weekStart: addDays(thisWeek, i * 7),
     expected,
     low: Math.min(...recent),
     high: Math.max(...recent),
@@ -195,8 +196,8 @@ export function sampleInsights(now: Date): Insights {
     sales: 79 * 45,
     repeatGuests: 22,
     distinctGuests: 79,
-    weeks: booked.map((seatsBooked, i) => ({ weekStart: addDays(thisWeek, (i - 7) * 7), seatsBooked, seatsOffered: 20 })),
-    forecast: [13, 13, 14, 14].map((expected, i) => ({ weekStart: addDays(thisWeek, (i + 1) * 7), expected, low: 11, high: high[i] })),
+    weeks: booked.map((seatsBooked, i) => ({ weekStart: addDays(thisWeek, (i - 8) * 7), seatsBooked, seatsOffered: 20 })),
+    forecast: [13, 13, 14, 14].map((expected, i) => ({ weekStart: addDays(thisWeek, i * 7), expected, low: 11, high: high[i] })),
     bestWeekday: { name: "Tuesday", fillRate: 50 / 80, events: 8 },
     lateWeekday: "Thursday",
     filling: {

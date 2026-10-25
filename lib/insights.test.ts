@@ -4,7 +4,8 @@ import { computeInsights, hasEnoughHistory, sampleInsights, type InsightsInput }
 import type { Space } from "@/lib/spaces";
 import { seattleToUtc } from "@/lib/time";
 
-// Sunday, Oct 25 2026, noon in Seattle. This week starts Monday, Oct 19.
+// Sunday, Oct 25 2026, noon in Seattle. This week starts Monday, Oct 19, so the
+// chart's 8 completed weeks run from Aug 24 to Oct 12.
 const NOW = seattleToUtc("2026-10-25", "12:00");
 const DAY = 86_400_000;
 
@@ -35,8 +36,8 @@ test("sample numbers agree with each other", () => {
   assert.equal(s.weeks.reduce((n, w) => n + w.seatsOffered, 0), s.seatsOffered);
   assert.equal(Math.round(s.fillRate * 100), 49);
   assert.equal(s.sales, 3555);
-  assert.equal(s.weeks[0].weekStart, "2026-08-31");
-  assert.equal(s.forecast[0].weekStart, "2026-10-26");
+  assert.equal(s.weeks[0].weekStart, "2026-08-24");
+  assert.equal(s.forecast[0].weekStart, "2026-10-19");
   assert.deepEqual(s.filling && [s.filling.weekday, s.filling.date, s.filling.daysOut], ["Thursday", "Oct 29", 4]);
 });
 
@@ -48,10 +49,10 @@ test("few events: not enough history for real mode", () => {
 });
 
 test("eight weeks of Tuesdays and Thursdays: real numbers", () => {
-  const tue = ["2026-08-25", "2026-09-01", "2026-09-08", "2026-09-15", "2026-09-22", "2026-09-29", "2026-10-06", "2026-10-13", "2026-10-20"];
+  const tue = ["2026-08-25", "2026-09-01", "2026-09-08", "2026-09-15", "2026-09-22", "2026-09-29", "2026-10-06", "2026-10-13"];
   const spaces: Space[] = [];
   const reservations: InsightsInput["reservations"] = [];
-  tue.slice(1).forEach((d, w) => {
+  tue.forEach((d, w) => {
     const t = event(d, 9);
     const thu = event(new Date(Date.parse(`${d}T12:00:00Z`) + 2 * DAY).toISOString().slice(0, 10), 4);
     spaces.push(t, thu);
@@ -59,16 +60,18 @@ test("eight weeks of Tuesdays and Thursdays: real numbers", () => {
     reservations.push(...guests(thu, [...Array(4)].map((_, k) => `h${w}-${k}@example.com`), 1));
   });
   spaces.push(event("2026-10-29", 8)); // upcoming, filling up (80%)
-  spaces.push(event("2026-08-25", 10)); // older than 8 weeks: counted in totals, not in the chart
+  spaces.push(event("2026-08-18", 10)); // older than 8 weeks: counted in totals, not in the chart
+  spaces.push(event("2026-10-20", 3)); // this week, already past: counted in totals, not in the chart
 
   const i = computeInsights({ spaces, reservations }, NOW);
-  assert.equal(i.events, 17);
-  assert.equal(i.guests, 8 * 13 + 10);
-  assert.equal(i.seatsOffered, 170);
+  assert.equal(i.events, 18);
+  assert.equal(i.guests, 8 * 13 + 10 + 3);
+  assert.equal(i.seatsOffered, 180);
   assert.equal(i.sales, i.guests * 25);
   assert.equal(hasEnoughHistory(i), true);
   assert.deepEqual(i.weeks.map((w) => w.seatsBooked), [13, 13, 13, 13, 13, 13, 13, 13]);
-  assert.equal(i.weeks.at(-1)!.weekStart, "2026-10-19");
+  assert.equal(i.weeks.at(-1)!.weekStart, "2026-10-12");
+  assert.equal(i.forecast[0].weekStart, "2026-10-19");
   assert.deepEqual(i.forecast.map((f) => [f.expected, f.low, f.high]), Array(4).fill([13, 13, 13]));
   assert.equal(i.bestWeekday?.name, "Tuesday");
   assert.equal(i.lateWeekday, "Thursday");
