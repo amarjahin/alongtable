@@ -275,3 +275,9 @@ export async function registerRestaurant(name: string, location: string): Promis
   if (!restaurant) throw new Error("registerRestaurant: restaurant disappeared after creation");
   return restaurant;
 }
+
+/** Delete a space. The database cascades to its event and that event's reservations. */
+export async function deleteSpace(id: string): Promise<void> {
+  const { error } = await supabase().from("spaces").delete().eq("id", id);
+  if (error) throw new Error(`deleteSpace: ${error.message}`);
+}

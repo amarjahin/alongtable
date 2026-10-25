@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CalendarBlank, CheckCircle, Clock, HandWaving, Plus } from "@phosphor-icons/react/ssr";
+import { CalendarBlank, CheckCircle, Clock, HandWaving, Plus, Trash } from "@phosphor-icons/react/ssr";
 import { Calendar } from "@/components/dashboard/calendar";
 import { GuestsChart } from "@/components/dashboard/guests-chart";
+import { ConfirmDelete } from "@/components/dashboard/confirm-delete";
 import { ImageUpload } from "@/components/dashboard/image-upload";
 import { SpacesFilter } from "@/components/dashboard/spaces-filter";
 import { StatTiles } from "@/components/dashboard/stat-tiles";
@@ -14,6 +15,7 @@ import { getCurrentRestaurant } from "@/lib/session";
 import { listSpaces, type Space } from "@/lib/spaces";
 import { statsByDay, summarize } from "@/lib/stats";
 import { formatDate, formatTimeRange, seattleDateKey, upcomingDays } from "@/lib/time";
+import { cancelEventAction, deleteSpaceAction } from "./delete-actions";
 import { simulateBookingAction, simulateReservationAction } from "./demo-actions";
 import { uploadEventPhoto, uploadRestaurantPhoto } from "./photo-actions";
 
@@ -213,6 +215,55 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
                     </>
                   )}
                   <SeatRow total={seats.capacity} taken={seats.seatsTaken} />
+
+                  <div className="flex flex-wrap items-center gap-1 border-t border-divider pt-3">
+                    {s.event && (
+                      <ConfirmDelete
+                        action={cancelEventAction}
+                        hidden={{ name: "spaceId", value: s.id }}
+                        trigger={<><Trash size={20} aria-hidden="true" />Cancel event</>}
+                        title="Cancel this event?"
+                        description={
+                          <>
+                            <p>
+                              &ldquo;{s.event.title}&rdquo; will be removed
+                              {s.event.seatsTaken > 0
+                                ? `, and the ${plural(s.event.seatsTaken, "guest", "guests")} who reserved will lose their seats.`
+                                : "."}{" "}
+                              The space opens up again, so someone else can book it.
+                            </p>
+                            {s.event.seatsTaken > 0 && (
+                              <p className="alt-secondary">We don&apos;t notify guests yet, so let them know yourself.</p>
+                            )}
+                          </>
+                        }
+                        confirmLabel="Cancel event"
+                      />
+                    )}
+                    <ConfirmDelete
+                      action={deleteSpaceAction}
+                      hidden={{ name: "spaceId", value: s.id }}
+                      trigger={<><Trash size={20} aria-hidden="true" />Delete space</>}
+                      title="Delete this space?"
+                      description={
+                        s.event ? (
+                          <>
+                            <p>
+                              {s.event.seatsTaken > 0
+                                ? `This removes the space, the event \u201c${s.event.title}\u201d and its ${plural(s.event.seatsTaken, "reservation", "reservations")}. It can\u2019t be undone.`
+                                : `This removes the space and the event \u201c${s.event.title}\u201d. It can\u2019t be undone.`}
+                            </p>
+                            {s.event.seatsTaken > 0 && (
+                              <p className="alt-secondary">We don&apos;t notify guests yet, so let them know yourself.</p>
+                            )}
+                          </>
+                        ) : (
+                          <p>This removes the space for good. Nobody has booked it yet.</p>
+                        )
+                      }
+                      confirmLabel="Delete space"
+                    />
+                  </div>
 
                   {DEMO && (
                     <form className="border-t border-divider pt-4">

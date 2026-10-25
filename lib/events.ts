@@ -272,3 +272,18 @@ export async function setEventPhoto(id: string, photoUrl: string): Promise<void>
   const { error } = await supabase().from("events").update({ photo_url: photoUrl }).eq("id", id);
   if (error) throw new Error(`setEventPhoto: ${error.message}`);
 }
+
+/**
+ * Cancel an event: delete it (its reservations cascade) and put its space back on offer.
+ * The space is reopened first, so a failure can never leave a space marked "booked" with no event.
+ */
+export async function cancelEvent(eventId: string, spaceId: string): Promise<void> {
+  const reopen = await supabase().from("spaces").update({ status: "available" }).eq("id", spaceId);
+  if (reopen.error) throw new Error(`cancelEvent: ${reopen.error.message}`);
+
+  const removed = await supabase().from("events").delete().eq("id", eventId);
+  if (removed.error) {
+    await supabase().from("spaces").update({ status: "booked" }).eq("id", spaceId); // undo
+    throw new Error(`cancelEvent: ${removed.error.message}`);
+  }
+}
