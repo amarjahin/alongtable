@@ -33,7 +33,7 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
 ### Phase 0: Setup (≈1h)
 
 - [ ] Create the Next.js app in this repo: `npx create-next-app@latest . --ts --tailwind --app --eslint`
-- [ ] Create a Supabase project. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` (git-ignored) and to Vercel.
+- [ ] Create a Supabase project. Copy `.env.example` to `.env.local` and fill in `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Add the same values to Vercel. Both are server-only, so don't add the `NEXT_PUBLIC_` prefix.
 - [ ] `npm i @supabase/supabase-js`. Add `lib/supabase.ts` (server client using the service role key, used only in server actions and route handlers).
 - [ ] Link the repo to Vercel and confirm that a hello-world page deploys.
 - [ ] Add a shared header: logo → `/`, plus links to **Find events** (`/events`), **Host an event** (`/spaces`) and **For restaurants** (`/restaurant`). Put a placeholder at `/` until Phase 5.
