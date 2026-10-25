@@ -40,6 +40,15 @@ type SpaceWithBookingRow = {
   seats_taken: number | null;
 };
 
+/** A space shown to organizers: available and in the future. */
+export type AvailableSpace = Omit<Space, "status" | "event">;
+
+type AvailableSpaceRow = Pick<
+  SpaceWithBookingRow,
+  "id" | "restaurant_name" | "restaurant_location" | "label" | "starts_at" | "ends_at" | "capacity" | "description" | "price_info"
+>;
+
+/** Restaurant dashboard (/restaurant): every space, including past and booked ones. */
 export async function listSpaces(): Promise<Space[]> {
   const { data, error } = await supabase()
     .from("spaces_with_booking")
@@ -49,7 +58,41 @@ export async function listSpaces(): Promise<Space[]> {
     .returns<SpaceWithBookingRow[]>();
   if (error) throw new Error(`listSpaces: ${error.message}`);
 
-  return data.map((r) => ({
+  return data.map(toSpace);
+}
+
+/** Browse spaces (/spaces): only available spaces that haven't started, soonest first. */
+export async function listAvailableSpaces(): Promise<AvailableSpace[]> {
+  const { data, error } = await supabase()
+    .from("available_spaces")
+    .select("*")
+    .order("starts_at")
+    .order("label")
+    .returns<AvailableSpaceRow[]>();
+  if (error) throw new Error(`listAvailableSpaces: ${error.message}`);
+
+  return data.map(toAvailableSpace);
+}
+
+/**
+ * Space details (/spaces/[id]). Returns booked and past spaces too, so the page
+ * can say "already booked" instead of 404. Check `status` before offering to book.
+ */
+export async function getSpace(id: string): Promise<Space | null> {
+  if (!isUuid(id)) return null;
+  const { data, error } = await supabase()
+    .from("spaces_with_booking")
+    .select("*")
+    .eq("id", id)
+    .returns<SpaceWithBookingRow[]>()
+    .maybeSingle();
+  if (error) throw new Error(`getSpace: ${error.message}`);
+
+  return data ? toSpace(data) : null;
+}
+
+function toAvailableSpace(r: AvailableSpaceRow): AvailableSpace {
+  return {
     id: r.id,
     restaurantName: r.restaurant_name,
     location: r.restaurant_location,
@@ -59,6 +102,12 @@ export async function listSpaces(): Promise<Space[]> {
     capacity: r.capacity,
     description: r.description,
     priceInfo: r.price_info,
+  };
+}
+
+function toSpace(r: SpaceWithBookingRow): Space {
+  return {
+    ...toAvailableSpace(r),
     status: r.status,
     event: r.event_id
       ? {
@@ -68,7 +117,14 @@ export async function listSpaces(): Promise<Space[]> {
           capacity: r.event_capacity!,
         }
       : null,
-  }));
+  };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Route params come from the URL; a non-UUID would make Postgres error instead of returning nothing. */
+export function isUuid(s: string): boolean {
+  return UUID_RE.test(s);
 }
 
 export async function createSpace(input: NewSpace): Promise<Space> {

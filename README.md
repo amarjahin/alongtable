@@ -10,6 +10,21 @@ Database contract: [`data-model/README.md`](data-model/README.md)
 
 ---
 
+## Getting started
+
+```bash
+npm install
+cp .env.example .env.local   # then fill in SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (ask the team)
+npm run dev
+```
+
+Database scripts (run in the Supabase SQL Editor):
+
+- `supabase/reset.sql`: wipe spaces, events and reservations before a demo run. Keeps restaurants.
+- `supabase/drop.sql`, then `schema.sql`, then `seed.sql`: rebuild from scratch after a schema change. Deletes all data.
+
+---
+
 ## Initial checklist: V0 build plan
 
 V0 is **one web app with two interfaces** that demonstrates the complete booking journey. No payments and no auth: users identify themselves by name and email.
@@ -30,45 +45,35 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
 
 ---
 
-### Phase 0: Setup (≈1h)
+### Done
 
-- [ ] Create the Next.js app in this repo: `npx create-next-app@latest . --ts --tailwind --app --eslint`
-- [ ] Create a Supabase project. Copy `.env.example` to `.env.local` and fill in `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Add the same values to Vercel. Both are server-only, so don't add the `NEXT_PUBLIC_` prefix.
-- [ ] `npm i @supabase/supabase-js`. Add `lib/supabase.ts` (server client using the service role key, used only in server actions and route handlers).
-- [ ] Link the repo to Vercel and confirm that a hello-world page deploys.
-- [ ] Add a shared header: logo → `/`, plus links to **Find events** (`/events`), **Host an event** (`/spaces`) and **For restaurants** (`/restaurant`). Put a placeholder at `/` until Phase 5.
+- **Phase 0, setup:** Next.js app, Supabase project, shared header, placeholder at `/`.
+- **Phase 1, database:** `supabase/schema.sql` implements the data model and is live in Supabase.
+- **Phase 2, Restaurant Owner UI:** `/restaurant` and `/restaurant/new` read and write Supabase.
+- **Data functions** for Phases 3–5 are built and tested (see [Data functions](#data-functions-lib)).
 
-### Phase 1: Database (≈2h)
+### Still open from Phases 0–2
 
-The database contract is [`data-model/README.md`](data-model/README.md). Implement that document. Do not add tables or columns it leaves out.
-
-- [ ] Create `supabase/schema.sql` from the data model and run it in the Supabase SQL editor. That file has the four tables, `create_event_for_space`, `reserve_seat`, and the views `available_spaces`, `events_with_availability`, and `spaces_with_booking`.
-- [ ] Create `supabase/seed.sql`: Il Nido and no spaces, plus a reset that truncates spaces, events, and reservations and leaves restaurants.
-
-### Phase 2: Restaurant Owner UI (≈2–3h)
-
-- [ ] **R1 Publish space** (`/restaurant/new`): a form with restaurant name and location (prefilled from the seed restaurant), space label, date, start/end time, capacity, and optional description and pricing info. A server action validates that capacity ≥ 1, end is after start, and the date is in the future, find-or-creates the restaurant, and inserts the space. Several spaces can share the same date and time.
-- [ ] **R2 My spaces** (`/restaurant`): `spaces_with_booking`, a list of all published spaces with an **Available** or **Booked** badge. Booked spaces show the event title, organizer and seats taken.
-
-✅ Done when: two 10-seat spaces for Wednesday 6–9 PM can be published and appear in the list as Available.
+- [ ] **Deploy to Vercel:** link the repo, add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as environment variables, and confirm the restaurant pages work on the shared URL.
+- [ ] **R1 prefill:** prefill restaurant name and location on `/restaurant/new` from the seed restaurant (Il Nido), so both demo spaces share one restaurant (data model, "Publish").
 
 ### Phase 3: Regular User UI, creating events (≈3h)
 
-- [ ] **U1 Browse spaces** (`/spaces`): `available_spaces`, each with restaurant, location, date, time and capacity.
+- [ ] **U1 Browse spaces** (`/spaces`): `listAvailableSpaces()`, each with restaurant, location, date, time and capacity.
 - [ ] **Space details** (`/spaces/[id]`): full details and a **"Book this space & create event"** button.
-- [ ] **U2 Create event** (`/spaces/[id]/create-event`): a form with title, description, number of spots (1 up to the space's capacity), and organizer name and email. It calls the `create_event_for_space` function.
+- [ ] **U2 Create event** (`/spaces/[id]/create-event`): a form with title, description, number of spots (1 up to the space's capacity), and organizer name and email. It calls `createEventForSpace()`.
 - [ ] **Event created** (`/events/[id]/created`): a success screen with a link to the public event page.
-- [ ] Errors: if someone else already booked the space, show "This space was just booked" and link back to `/spaces`.
+- [ ] Errors: show the returned `message` (e.g. when someone else just booked the space) and link back to `/spaces`.
 
 ✅ Done when: after an event is created, its space no longer appears in `/spaces`, the second space still does, and `/restaurant` shows the space as Booked.
 
 ### Phase 4: Regular User UI, joining events (≈3h)
 
-- [ ] **U3 Discover events** (`/events`): upcoming events from `events_with_availability`, each with title, description excerpt, date, time, location and **"X spots left"** (or a **Sold out** badge).
+- [ ] **U3 Discover events** (`/events`): `listUpcomingEvents()`, each with title, description excerpt, date, time, location and **"X spots left"** (or a **Sold out** badge).
 - [ ] **Event details** (`/events/[id]`): full details, spots left, and a **Join** button that is disabled when the event is sold out.
-- [ ] **U4 Join event** (`/events/[id]/join`): a name and email form that calls the `reserve_seat` function. Disable the button while submitting.
+- [ ] **U4 Join event** (`/events/[id]/join`): a name and email form that calls `reserveSeat()`. Disable the button while submitting.
 - [ ] **Booking confirmation** (`/reservations/[code]`): confirmation code, event details, and "No payment collected."
-- [ ] Error states: "This event is full" and "You've already reserved a seat with this email."
+- [ ] Error states: show the returned `message` for `EVENT_FULL` and `ALREADY_RESERVED`.
 
 ✅ Done when: joining moves the event from 10 to 9 spots left on the list, detail and restaurant pages, and the count is unchanged after a refresh.
 
@@ -81,7 +86,7 @@ The landing page (`/`) is the first thing judges see. It should explain the prod
   - **Host an event** → `/spaces`
   - **List your space** → `/restaurant`
 - [ ] **How it works**: three steps with icons. A restaurant lists a table, a user turns it into an event, and others join for a seat.
-- [ ] **Upcoming events**: the next 3 events from `events_with_availability`, shown as cards with spots left. Each card links to `/events/[id]`. If there are no events yet, show "Be the first to host" linking to `/spaces`. This proves the page reads live data.
+- [ ] **Upcoming events**: the next 3 events from `listUpcomingEvents({ limit: 3 })`, shown as cards with spots left. Each card links to `/events/[id]`. If there are no events yet, show "Be the first to host" linking to `/spaces`. This proves the page reads live data.
 - [ ] **For restaurants**: a short pitch (fill off-peak seats, no setup cost, no payments in V0) with a **List your space** CTA.
 - [ ] **Footer**: one line about the project and hackathon, with a link to the repo.
 - [ ] Looks good at phone width, loads fast (server component), and has a page title and meta description set.
@@ -124,16 +129,34 @@ AI is not in the V0 PRD scope (§7), but the hackathon requires it. Add it only 
 
 ---
 
+## Data functions (`lib/`)
+
+Pages call these from Server Components or server actions. They are server-only. Read functions belong inside `<Suspense>`.
+
+| Page | Function |
+|---|---|
+| `/restaurant` | `listSpaces()` (`lib/spaces.ts`) |
+| `/restaurant/new` | `createSpace(input)` (`lib/spaces.ts`) |
+| `/spaces` | `listAvailableSpaces()` (`lib/spaces.ts`) |
+| `/spaces/[id]` | `getSpace(id)` (`lib/spaces.ts`). Returns `null` if not found. Check `status === "available"` before showing the book button |
+| `/spaces/[id]/create-event` | `createEventForSpace(input)` (`lib/events.ts`) |
+| `/events`, landing | `listUpcomingEvents()` and `listUpcomingEvents({ limit: 3 })` (`lib/events.ts`). Sold-out events are included with `seatsLeft: 0` |
+| `/events/[id]`, `/events/[id]/created` | `getEvent(id)` (`lib/events.ts`). Returns `null` if not found |
+| `/events/[id]/join` | `reserveSeat({ eventId, name, email })` (`lib/events.ts`) |
+| `/reservations/[code]` | `getReservation(code)` (`lib/events.ts`). Returns `{ reservation, event }` or `null` |
+
+`createEventForSpace` and `reserveSeat` return `{ ok: true, data }` or `{ ok: false, code, message }`. Show `message` to the user. `code` is one of `SPACE_NOT_FOUND`, `SPACE_NOT_AVAILABLE`, `CAPACITY_INVALID`, `EVENT_NOT_FOUND`, `EVENT_FULL` or `ALREADY_RESERVED`. Unexpected database errors throw. Validate form fields (non-empty, email format) in the server action before calling.
+
 ## Suggested team split
 
 | Workstream | Phases |
 |---|---|
-| Backend / data | 0, 1, then helps with 3–4 server actions |
-| Frontend: Restaurant UI | 2, then 6 |
+| Backend / data | Vercel deploy, server actions for 3–4, then Phase 8 (AI) |
+| Frontend: Restaurant UI | R1 prefill, then 6 |
 | Frontend: User UI | 3, 4, then 5 (landing) |
 | PM / QA | Demo script, landing page copy, Phase 7 checklist, Phase 8 |
 
-Phases 2–4 can start in parallel once the Phase 1 schema is agreed. Use mocked data until the database is ready.
+Phases 3–5 can start now: the data functions are ready.
 
 ## Out of scope for V0
 
