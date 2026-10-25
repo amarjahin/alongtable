@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Form } from "@base-ui/react/form";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
+import { PhotoField } from "@/components/ui/photo-field";
 import { createEvent, type FormState } from "../../actions";
 
 /** Starting values, e.g. an event drafted by the AI planner. */
@@ -49,6 +50,10 @@ export function CreateEventForm({
         label="Available spots"
         defaultValue={v.capacity || String(capacity)}
         hint={`How many people can join, up to ${capacity} (the space's capacity).`}
+      />
+      <PhotoField
+        label="Event photo (optional)"
+        hint="A JPEG, PNG or WebP up to 4 MB. If you don't add one, the restaurant's photo is used."
       />
       <TextField name="organizerName" label="Your name" defaultValue={v.organizerName} autoComplete="name" />
       <TextField

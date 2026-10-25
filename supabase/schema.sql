@@ -13,6 +13,7 @@ create table restaurants (
   id          uuid primary key default gen_random_uuid(),
   name        text not null,
   location    text not null,
+  photo_url   text,
   created_at  timestamptz not null default now()
 );
 
@@ -40,6 +41,7 @@ create table events (
   capacity         int not null check (capacity > 0),
   organizer_name   text not null,
   organizer_email  text not null,
+  photo_url        text,
   created_at       timestamptz not null default now()
 );
 
@@ -76,7 +78,8 @@ select
   s.ends_at,
   s.capacity,
   s.description,
-  s.price_info
+  s.price_info,
+  r.photo_url as restaurant_photo_url
 from spaces s
 join restaurants r on r.id = s.restaurant_id
 where s.status = 'available'
@@ -98,7 +101,9 @@ select
   s.price_info,
   r.name      as restaurant_name,
   r.location  as restaurant_location,
-  (e.capacity - (select count(*) from reservations x where x.event_id = e.id))::int as seats_left
+  (e.capacity - (select count(*) from reservations x where x.event_id = e.id))::int as seats_left,
+  r.photo_url as restaurant_photo_url,
+  e.photo_url as event_photo_url
 from events e
 join spaces s      on s.id = e.space_id
 join restaurants r on r.id = s.restaurant_id;
@@ -121,7 +126,9 @@ select
   e.title           as event_title,
   e.organizer_name,
   e.capacity        as event_capacity,
-  (select count(*) from reservations x where x.event_id = e.id)::int as seats_taken
+  (select count(*) from reservations x where x.event_id = e.id)::int as seats_taken,
+  r.photo_url as restaurant_photo_url,
+  e.photo_url as event_photo_url
 from spaces s
 join restaurants r     on r.id = s.restaurant_id
 left join events e     on e.space_id = s.id;
@@ -222,3 +229,16 @@ begin
     grant execute on function reserve_seat(uuid, text, text) to service_role;
   end if;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Restaurant and event photos. One public bucket (folders restaurants/<id>/ and events/<id>/); the server uploads with the service role
+-- key and stores the public URL in restaurants.photo_url or events.photo_url. Public buckets serve
+-- objects by URL, so no storage policies are needed for reading.
+-- ---------------------------------------------------------------------------
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('photos', 'photos', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;

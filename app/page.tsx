@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Suspense } from "react";
-import { CalendarCheck, Clock, MapPin, Storefront, UsersThree } from "@phosphor-icons/react/ssr";
+import { CalendarBlank, CalendarCheck, Clock, MapPin, Storefront, UsersThree } from "@phosphor-icons/react/ssr";
 import { EventsRow } from "@/components/landing/events-row";
 import { Row } from "@/components/landing/row";
 import { SpaceTile, cover } from "@/components/landing/cards";
@@ -8,7 +9,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { SeatRow } from "@/components/ui/seat-row";
 import { listUpcomingEvents, type Event } from "@/lib/events";
 import { listAvailableSpaces } from "@/lib/spaces";
-import { dateParts, formatTimeRange, seattleDateKey, upcomingDays } from "@/lib/time";
+import { dateParts, formatDate, formatTimeRange, seattleDateKey, upcomingDays } from "@/lib/time";
 
 export const metadata: Metadata = {
   title: "ALongTable · Turn empty tables into thriving communities",
@@ -70,22 +71,40 @@ async function NextTable() {
   const end = new Date(event.endsAt);
   const p = dateParts(start);
   const c = cover(0);
+  const photoUrl = event.photoUrl ?? event.restaurantPhotoUrl; // the event's own photo, else the restaurant's
 
   return (
     <div className="alt-card flex flex-col gap-5 !p-4">
-      <div className={`${c.bg} ${c.text} flex aspect-[16/9] items-end justify-between rounded-photo p-5`}>
-        <span className="flex items-baseline gap-3">
-          <span className="alt-hero">{p.day}</span>
-          <span className="alt-lead font-semibold">{p.month}</span>
-        </span>
-        <span className="alt-label-text uppercase tracking-wide">{p.weekday}</span>
-      </div>
+      {photoUrl ? (
+        <div className="relative aspect-[16/9] overflow-hidden rounded-photo bg-sunken">
+          <Image
+            src={photoUrl}
+            alt={event.photoUrl ? event.title : `Inside ${event.restaurantName}`}
+            fill
+            priority
+            sizes="(min-width: 1024px) 480px, 100vw"
+            className="object-cover"
+          />
+        </div>
+      ) : (
+        <div className={`${c.bg} ${c.text} flex aspect-[16/9] items-end justify-between rounded-photo p-5`}>
+          <span className="flex items-baseline gap-3">
+            <span className="alt-hero">{p.day}</span>
+            <span className="alt-lead font-semibold">{p.month}</span>
+          </span>
+          <span className="alt-label-text uppercase tracking-wide">{p.weekday}</span>
+        </div>
+      )}
       <div className="flex flex-col gap-2 px-1">
         <p className="alt-label-text alt-secondary">Next table</p>
         <h2 className="alt-title">{event.title}</h2>
         <p className="alt-meta">
           <MapPin size={20} aria-hidden="true" />
           {event.restaurantName} · {event.location}
+        </p>
+        <p className="alt-meta">
+          <CalendarBlank size={20} aria-hidden="true" />
+          {formatDate(start)}
         </p>
         <p className="alt-meta">
           <Clock size={20} aria-hidden="true" />

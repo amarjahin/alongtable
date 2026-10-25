@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { CalendarBlank, Clock, MapPin } from "@phosphor-icons/react/ssr";
 import { SeatRow } from "@/components/ui/seat-row";
@@ -20,7 +21,29 @@ export function cover(i: number) {
 const cardLink =
   "group flex w-[272px] shrink-0 snap-start flex-col gap-3 rounded-card outline-none focus-visible:shadow-[var(--alt-focus)]";
 
-function Cover({ i, top, big, small }: { i: number; top: string; big: string; small: string }) {
+function Cover({
+  i,
+  top,
+  big,
+  small,
+  photoUrl,
+  alt,
+}: {
+  i: number;
+  top: string;
+  big: string;
+  small: string;
+  photoUrl?: string | null;
+  alt: string;
+}) {
+  // A real photo of the restaurant when it has uploaded one; otherwise the typographic cover.
+  if (photoUrl) {
+    return (
+      <div className="relative aspect-[4/3] overflow-hidden rounded-photo bg-sunken">
+        <Image src={photoUrl} alt={alt} fill sizes="272px" className="object-cover" />
+      </div>
+    );
+  }
   const c = cover(i);
   return (
     <div className={`${c.bg} ${c.text} flex aspect-[4/3] flex-col justify-between rounded-photo p-4`}>
@@ -41,7 +64,14 @@ export function EventTile({ event, i }: { event: Event; i: number }) {
 
   return (
     <Link href={`/events/${event.id}`} className={cardLink}>
-      <Cover i={i} top={p.weekday} big={p.day} small={p.month} />
+      <Cover
+        i={i}
+        top={p.weekday}
+        big={p.day}
+        small={p.month}
+        photoUrl={event.photoUrl ?? event.restaurantPhotoUrl}
+        alt={event.photoUrl ? event.title : `Inside ${event.restaurantName}`}
+      />
       <div className="flex flex-col gap-1">
         <h3 className="alt-lead line-clamp-2 font-semibold group-hover:underline">{event.title}</h3>
         <p className="alt-meta">
@@ -49,6 +79,10 @@ export function EventTile({ event, i }: { event: Event; i: number }) {
           <span className="truncate">
             {event.restaurantName} · {event.location}
           </span>
+        </p>
+        <p className="alt-meta">
+          <CalendarBlank size={20} aria-hidden="true" />
+          <span>{formatDate(start)}</span>
         </p>
         <p className="alt-meta">
           <Clock size={20} aria-hidden="true" />
@@ -67,7 +101,7 @@ export function SpaceTile({ space, i }: { space: AvailableSpace; i: number }) {
 
   return (
     <Link href={`/spaces/${space.id}`} className={cardLink}>
-      <Cover i={i + 1} top="Up to" big={String(space.capacity)} small="guests" />
+      <Cover i={i + 1} top="Up to" big={String(space.capacity)} small="guests" photoUrl={space.photoUrl} alt={`Inside ${space.restaurantName}`} />
       <div className="flex flex-col gap-1">
         <h3 className="alt-lead line-clamp-2 font-semibold group-hover:underline">
           {space.restaurantName} · {space.label}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -38,6 +39,18 @@ async function EventDetails({ id }: { id: string }) {
 
   return (
     <article className="mt-4">
+      {(event.photoUrl ?? event.restaurantPhotoUrl) && (
+        <div className="relative mb-6 aspect-[16/9] overflow-hidden rounded-photo bg-sunken">
+          <Image
+            src={(event.photoUrl ?? event.restaurantPhotoUrl)!}
+            alt={event.photoUrl ? event.title : `Inside ${event.restaurantName}`}
+            fill
+            priority
+            sizes="(min-width: 640px) 576px, 100vw"
+            className="object-cover"
+          />
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3">
         <h1 className="text-2xl font-semibold">{event.title}</h1>
         <Badge tone={soldOut || past ? "neutral" : "green"}>

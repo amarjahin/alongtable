@@ -22,9 +22,12 @@ UUID primary keys. Foreign keys use `on delete cascade`.
 | `id` | `uuid` primary key, `default gen_random_uuid()` |
 | `name` | `text` not null |
 | `location` | `text` not null |
+| `photo_url` | `text`, nullable. Public URL of the restaurant's photo in the `restaurant-photos` storage bucket |
 | `created_at` | `timestamptz` not null, `default now()` |
 
 Unique index on `(lower(trim(name)), lower(trim(location)))`.
+
+Photos for restaurants and events live in one public Storage bucket, `photos`, created by `schema.sql` (5 MB limit, JPEG, PNG or WebP), in folders `restaurants/<id>/` and `events/<id>/`. The server uploads with the service role key and saves the URL on the row.
 
 ### spaces
 
@@ -53,6 +56,7 @@ Unique index on `(lower(trim(name)), lower(trim(location)))`.
 | `capacity` | `int` not null, `check (capacity > 0)` |
 | `organizer_name` | `text` not null |
 | `organizer_email` | `text` not null, stored trimmed and lowercased |
+| `photo_url` | `text`, nullable. Public URL of the event's own photo in the `photos` storage bucket |
 | `created_at` | `timestamptz` not null, `default now()` |
 
 `space_id` unique means one event per slot. `capacity` is how many spots the organizer offers. The function also rejects a value above `spaces.capacity`.
@@ -96,11 +100,11 @@ The function does not insert a reservation for the organizer.
 
 ### `available_spaces`
 
-`status = 'available'` and `starts_at > now()`, with restaurant name, location, label, times, capacity, description, and price info. Powers `/spaces`.
+`status = 'available'` and `starts_at > now()`, with restaurant name, location, restaurant photo (`restaurant_photo_url`), label, times, capacity, description, and price info. Powers `/spaces`.
 
 ### `events_with_availability`
 
-Event fields, space time, label, and price info, restaurant name and location, and:
+Event fields, space time, label, and price info, restaurant name, location and photo (`restaurant_photo_url`), the event's own photo (`event_photo_url`), and:
 
 ```text
 seats_left = events.capacity - count(reservations)
@@ -112,7 +116,7 @@ The organizer has no reservation row, so a capacity-10 event shows 10 spots unti
 
 ### `spaces_with_booking`
 
-Every space, including past ones. Booked rows include the event title, organizer name, and seats taken. Powers `/restaurant`.
+Every space, including past ones. Booked rows include the event title, organizer name, and seats taken. Also carries `restaurant_photo_url` and `event_photo_url`. Powers `/restaurant`.
 
 ## Time
 

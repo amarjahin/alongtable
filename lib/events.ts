@@ -18,6 +18,10 @@ export type Event = {
   organizerName: string;
   restaurantName: string;
   location: string;
+  /** The event's own photo, if its organizer or the restaurant added one. */
+  photoUrl?: string | null;
+  /** The restaurant's photo: the fallback when the event has none. */
+  restaurantPhotoUrl?: string | null;
   label: string;
   startsAt: string; // ISO, UTC
   endsAt: string; // ISO, UTC
@@ -119,6 +123,9 @@ type EventRow = {
   organizer_name: string;
   restaurant_name: string;
   restaurant_location: string;
+  /** Both absent until supabase/add-photos.sql has been run. */
+  restaurant_photo_url?: string | null;
+  event_photo_url?: string | null;
   label: string;
   starts_at: string;
   ends_at: string;
@@ -137,6 +144,8 @@ function toEvent(r: EventRow): Event {
     organizerName: r.organizer_name,
     restaurantName: r.restaurant_name,
     location: r.restaurant_location,
+    photoUrl: r.event_photo_url ?? null,
+    restaurantPhotoUrl: r.restaurant_photo_url ?? null,
     label: r.label,
     startsAt: r.starts_at,
     endsAt: r.ends_at,
@@ -248,4 +257,10 @@ export async function getReservation(
   const event = await getEvent(data.event_id);
   if (!event) return null;
   return { reservation: toReservation(data), event };
+}
+
+/** Save an event's own photo URL. Fails until supabase/add-photos.sql has been run. */
+export async function setEventPhoto(id: string, photoUrl: string): Promise<void> {
+  const { error } = await supabase().from("events").update({ photo_url: photoUrl }).eq("id", id);
+  if (error) throw new Error(`setEventPhoto: ${error.message}`);
 }

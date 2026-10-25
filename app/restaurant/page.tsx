@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { CalendarBlank, CheckCircle, Clock, HandWaving, Plus } from "@phosphor-icons/react/ssr";
 import { Calendar } from "@/components/dashboard/calendar";
 import { GuestsChart } from "@/components/dashboard/guests-chart";
+import { ImageUpload } from "@/components/dashboard/image-upload";
 import { SpacesFilter } from "@/components/dashboard/spaces-filter";
 import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import { listSpaces, type Space } from "@/lib/spaces";
 import { statsByDay, summarize } from "@/lib/stats";
 import { formatDate, formatTimeRange, seattleDateKey, upcomingDays } from "@/lib/time";
 import { simulateBookingAction, simulateReservationAction } from "./demo-actions";
+import { uploadEventPhoto, uploadRestaurantPhoto } from "./photo-actions";
 
 const DEMO = process.env.NODE_ENV === "development";
 
@@ -107,6 +109,15 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
         </div>
       </header>
 
+      <ImageUpload
+        action={uploadRestaurantPhoto}
+        photoUrl={restaurant.photoUrl}
+        alt={`Inside ${restaurant.name}`}
+        addLabel="Add a photo"
+        changeLabel="Change photo"
+        guidance="Add a photo of your real space, like a table set for service. It shows on your event cards, so guests can picture the evening. Only upload photos you have the right to use."
+      />
+
       {registered && (
         <p role="status" className="alt-notice alt-notice--success">
           <CheckCircle size={24} aria-hidden="true" className="alt-icon" />
@@ -185,10 +196,21 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
                   </div>
 
                   {s.event && (
-                    <p>
-                      <span className="font-semibold">{s.event.title}</span>
-                      <span className="alt-secondary"> · organized by {s.event.organizerName}</span>
-                    </p>
+                    <>
+                      <p>
+                        <span className="font-semibold">{s.event.title}</span>
+                        <span className="alt-secondary"> · organized by {s.event.organizerName}</span>
+                      </p>
+                      <ImageUpload
+                        action={uploadEventPhoto}
+                        hidden={{ name: "eventId", value: s.event.id }}
+                        photoUrl={s.event.photoUrl}
+                        alt={s.event.title}
+                        addLabel="Add event photo"
+                        changeLabel="Change event photo"
+                        size="sm"
+                      />
+                    </>
                   )}
                   <SeatRow total={seats.capacity} taken={seats.seatsTaken} />
 

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createEventForSpace } from "@/lib/events";
+import { createEventForSpace, setEventPhoto } from "@/lib/events";
+import { checkPhoto, removePhotoFile, uploadPhoto } from "@/lib/photos";
 import { getSpace } from "@/lib/spaces";
 
 export type FormState = {
@@ -38,6 +39,13 @@ export async function createEvent(_prev: FormState, formData: FormData): Promise
   }
   if (!values.organizerName) errors.organizerName = "Enter your name.";
   if (!EMAIL_RE.test(values.organizerEmail)) errors.organizerEmail = "Enter a valid email address.";
+  // The photo is optional, but if there is one, check it now, before the space is booked.
+  const photo = formData.get("photo");
+  const hasPhoto = photo instanceof File && photo.size > 0;
+  if (hasPhoto) {
+    const problem = checkPhoto(photo);
+    if (problem) errors.photo = problem;
+  }
   if (Object.keys(errors).length) return { errors, values };
 
   let eventId: string;
@@ -60,8 +68,24 @@ export async function createEvent(_prev: FormState, formData: FormData): Promise
     return { errors: { form: "Something went wrong and the event wasn't created. Please try again." }, values };
   }
 
+  // The event exists now, so a photo problem must not undo it: carry on and tell the organizer.
+  let photoFailed = false;
+  if (hasPhoto) {
+    const result = await uploadPhoto("events", eventId, photo);
+    if (!result.ok) photoFailed = true;
+    else {
+      try {
+        await setEventPhoto(eventId, result.url);
+      } catch (err) {
+        console.error("createEvent: saving the photo failed", err);
+        await removePhotoFile(result.path);
+        photoFailed = true;
+      }
+    }
+  }
+
   revalidatePath("/spaces");
   revalidatePath("/events");
   revalidatePath("/restaurant");
-  redirect(`/events/${eventId}/created`);
+  redirect(`/events/${eventId}/created${photoFailed ? "?photo=failed" : ""}`);
 }

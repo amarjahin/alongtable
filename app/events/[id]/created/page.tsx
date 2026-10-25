@@ -7,19 +7,19 @@ import { formatDate, formatTimeRange } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Event created · ALongTable" };
 
-export default function EventCreatedPage({ params }: PageProps<"/events/[id]/created">) {
+export default function EventCreatedPage({ params, searchParams }: PageProps<"/events/[id]/created">) {
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8">
       <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
-        {params.then(({ id }) => (
-          <Content id={id} />
+        {Promise.all([params, searchParams]).then(([{ id }, query]) => (
+          <Content id={id} photoFailed={query.photo === "failed"} />
         ))}
       </Suspense>
     </main>
   );
 }
 
-async function Content({ id }: { id: string }) {
+async function Content({ id, photoFailed }: { id: string; photoFailed: boolean }) {
   const event = await getEvent(id);
   if (!event) notFound();
 
@@ -32,6 +32,12 @@ async function Content({ id }: { id: string }) {
       <p className="mt-1 text-sm text-neutral-600">
         The space is booked and others can now find and join your event. No payment was collected.
       </p>
+
+      {photoFailed && (
+        <p role="status" className="alt-notice alt-notice--info mt-4 text-left">
+          Your event is live, but we couldn&apos;t save the photo. The restaurant can add one from its dashboard.
+        </p>
+      )}
 
       <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-4 text-left">
         <p className="font-medium">{event.title}</p>
