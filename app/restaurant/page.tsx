@@ -24,7 +24,7 @@ export default function RestaurantPage({
   searchParams: Promise<{ published?: string; registered?: string; month?: string }>;
 }) {
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8">
       <Suspense fallback={<p className="text-sm text-neutral-500">Loading spaces…</p>}>
         <Dashboard searchParams={searchParams} />
       </Suspense>
@@ -93,22 +93,28 @@ async function Dashboard({
 
       <StatTiles
         items={[
-          { label: "Spaces available", value: summary.available },
-          { label: "Events booked", value: summary.events },
-          { label: "Guests booked", value: summary.guests },
+          {
+            label: "Est. revenue",
+            value: summary.revenue.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }),
+            note: "Guests booked × price per person",
+          },
+          { label: "Guests booked", value: summary.guests.toLocaleString("en-US") },
+          { label: "Events booked", value: summary.events.toLocaleString("en-US") },
+          { label: "Spaces available", value: summary.available.toLocaleString("en-US") },
         ]}
       />
 
-      <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-4">
-        <h2 className="font-semibold">Guests booked</h2>
-        <p className="mb-3 text-sm text-neutral-600">By event day, next 14 days</p>
-        <GuestsChart days={chartDays} />
-      </section>
+      <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-neutral-200 bg-white p-4">
+          <h2 className="font-semibold">Guests booked</h2>
+          <p className="mb-2 text-sm text-neutral-600">By event day, next 14 days</p>
+          <GuestsChart days={chartDays} />
+        </section>
 
-      <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-4">
-        <h2 className="mb-3 font-semibold">Calendar</h2>
-        <Calendar month={month} todayKey={todayKey} stats={stats} />
-      </section>
+        <section className="rounded-xl border border-neutral-200 bg-white p-4">
+          <Calendar month={month} todayKey={todayKey} stats={stats} />
+        </section>
+      </div>
 
       <h2 className="mb-3 mt-8 text-lg font-semibold">My spaces</h2>
       {spaces.length === 0 ? (
@@ -118,7 +124,7 @@ async function Dashboard({
           <ButtonLink href="/restaurant/new">Publish a space</ButtonLink>
         </div>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="grid gap-3 lg:grid-cols-2">
           {spaces.map((s) => {
             const start = new Date(s.startsAt);
             const end = new Date(s.endsAt);

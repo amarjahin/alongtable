@@ -4,45 +4,56 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 
 export type DayPoint = { key: string; label: string; weekday: string; guests: number; events: number };
 
-// Chart tokens (single series: blue 450, hairline grid, muted axis text).
-const LINE = "#2a78d6";
+// Chart tokens (single series: blue 450, hover blue 550, hairline grid, muted axis text).
+const BAR = "#2a78d6";
+const BAR_ACTIVE = "#1c5cab";
 const GRID = "#e1e0d9";
 const AXIS = "#c3c2b7";
+const BAND = "#f4f3ef";
 const MUTED = "#898781";
 
-const H = 240;
-const M = { t: 20, r: 20, b: 28, l: 36 };
+const H = 176;
+const M = { t: 18, r: 8, b: 34, l: 28 };
+const MAX_BAR = 24;
+const GAP = 2;
+
+/** Column with a 4px rounded top and a square base, so it grows from the baseline. */
+function columnPath(x: number, y: number, w: number, h: number) {
+  const r = Math.min(4, w / 2, h);
+  return `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`;
+}
 
 export function GuestsChart({ days }: { days: DayPoint[] }) {
   const [active, setActive] = useState<number | null>(null);
-  const [W, setW] = useState(640); // drawn at the container's real width so text stays readable on phones
+  const [W, setW] = useState(480); // drawn at the container's real width so text stays readable
   const box = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
+  const n = days.length;
 
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.max(280, Math.round(e.contentRect.width))));
+    const ro = new ResizeObserver(([e]) => setW(Math.max(260, Math.round(e.contentRect.width))));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const n = days.length;
 
   const max = Math.max(0, ...days.map((d) => d.guests));
-  const step = Math.max(1, Math.ceil(max / 4));
-  const top = step * 4;
-  const x = (i: number) => M.l + (i / (n - 1)) * (W - M.l - M.r);
+  const step = Math.max(1, Math.ceil(max / 3));
+  const top = step * 3;
+  const plotW = W - M.l - M.r;
+  const band = plotW / n;
+  const barW = Math.max(4, Math.min(MAX_BAR, band - GAP * 2));
+  const cx = (i: number) => M.l + band * i + band / 2;
   const y = (v: number) => M.t + (1 - v / top) * (H - M.t - M.b);
-
-  const line = days.map((d, i) => `${i ? "L" : "M"}${x(i)},${y(d.guests)}`).join(" ");
-  const area = `${line} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z`;
   const peak = max > 0 ? days.findIndex((d) => d.guests === max) : -1;
+  const ticks = [0, 1, 2, 3].map((i) => i * step);
   const a = active === null ? null : days[active];
 
   function onPointer(e: PointerEvent<SVGSVGElement>) {
     const r = svg.current!.getBoundingClientRect();
     const px = ((e.clientX - r.left) / r.width) * W;
-    setActive(Math.min(n - 1, Math.max(0, Math.round(((px - M.l) / (W - M.l - M.r)) * (n - 1)))));
+    setActive(Math.min(n - 1, Math.max(0, Math.floor((px - M.l) / band))));
   }
 
   function onKey(e: KeyboardEvent<SVGSVGElement>) {
@@ -53,8 +64,6 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
     e.preventDefault();
   }
 
-  const ticks = Array.from({ length: 5 }, (_, i) => i * step);
-
   return (
     <div>
       <div ref={box} className="relative">
@@ -64,59 +73,57 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
           className="block h-auto w-full touch-pan-y rounded outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
           tabIndex={0}
           role="img"
-          aria-label={`Line chart of guests booked per event day for the next ${n} days. Use the left and right arrow keys to read each day.`}
+          aria-label={`Bar chart of guests booked per event day for the next ${n} days. Use the left and right arrow keys to read each day.`}
           onPointerMove={onPointer}
           onPointerLeave={() => setActive(null)}
           onBlur={() => setActive(null)}
           onKeyDown={onKey}
         >
+          {active !== null && <rect x={M.l + band * active} y={M.t} width={band} height={H - M.t - M.b} fill={BAND} />}
+
           {ticks.map((t) => (
             <g key={t}>
               <line x1={M.l} x2={W - M.r} y1={y(t)} y2={y(t)} stroke={t === 0 ? AXIS : GRID} strokeWidth={1} />
-              <text x={M.l - 8} y={y(t) + 4} textAnchor="end" fontSize={11} fill={MUTED}>
+              <text x={M.l - 6} y={y(t) + 4} textAnchor="end" fontSize={11} fill={MUTED}>
                 {t}
               </text>
             </g>
           ))}
-          {days.map((d, i) =>
-            i % (W < 480 ? 4 : 3) === 0 ? (
-              <text key={d.key} x={x(i)} y={H - 8} textAnchor="middle" fontSize={11} fill={MUTED}>
-                {d.label}
-              </text>
-            ) : null,
-          )}
 
-          <path d={area} fill={LINE} fillOpacity={0.1} />
-          <path d={line} fill="none" stroke={LINE} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          {days.map((d, i) => {
+            const [month, day] = d.label.split(" ");
+            return (
+              <g key={d.key}>
+                {d.guests > 0 && (
+                  <path
+                    d={columnPath(cx(i) - barW / 2, y(d.guests), barW, y(0) - y(d.guests))}
+                    fill={active === i ? BAR_ACTIVE : BAR}
+                  />
+                )}
+                <text x={cx(i)} y={H - 18} textAnchor="middle" fontSize={11} fill={MUTED}>
+                  {day}
+                </text>
+                {(i === 0 || day === "1") && (
+                  <text x={cx(i)} y={H - 5} textAnchor="middle" fontSize={11} fontWeight={600} fill={MUTED}>
+                    {month}
+                  </text>
+                )}
+              </g>
+            );
+          })}
 
-          {peak >= 0 && active !== peak && (
-            <>
-              <circle cx={x(peak)} cy={y(max)} r={4} fill={LINE} stroke="#fff" strokeWidth={2} />
-              <text
-                x={x(peak)}
-                y={y(max) - 10}
-                textAnchor={peak === 0 ? "start" : peak === n - 1 ? "end" : "middle"}
-                fontSize={12}
-                fontWeight={600}
-                fill="#0b0b0b"
-              >
-                {max}
-              </text>
-            </>
-          )}
-          {active !== null && a && (
-            <>
-              <line x1={x(active)} x2={x(active)} y1={M.t} y2={y(0)} stroke={AXIS} strokeWidth={1} />
-              <circle cx={x(active)} cy={y(a.guests)} r={4} fill={LINE} stroke="#fff" strokeWidth={2} />
-            </>
+          {peak >= 0 && (
+            <text x={cx(peak)} y={y(max) - 5} textAnchor="middle" fontSize={12} fontWeight={600} fill="#0b0b0b">
+              {max}
+            </text>
           )}
         </svg>
 
         {a && active !== null && (
           <div
-            className="pointer-events-none absolute top-2 z-10 min-w-32 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs shadow-sm"
+            className="pointer-events-none absolute top-1 z-10 min-w-32 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs shadow-sm"
             style={{
-              left: `${(x(active) / W) * 100}%`,
+              left: `${(cx(active) / W) * 100}%`,
               transform: active > n / 2 ? "translateX(calc(-100% - 12px))" : "translateX(12px)",
             }}
           >
@@ -124,7 +131,7 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
               {a.weekday === "Today" ? "Today" : a.weekday}, {a.label}
             </p>
             <p className="mt-1 flex items-center gap-2">
-              <span className="inline-block h-0.5 w-3 rounded" style={{ background: LINE }} />
+              <span className="inline-block h-2 w-3 rounded-sm" style={{ background: BAR }} />
               <span className="text-sm font-semibold text-neutral-950">{a.guests}</span>
               <span className="text-neutral-600">{a.guests === 1 ? "guest" : "guests"}</span>
             </p>
@@ -145,7 +152,7 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
         {a ? `${a.weekday} ${a.label}: ${a.guests} ${a.guests === 1 ? "guest" : "guests"}, ${a.events} ${a.events === 1 ? "event" : "events"}` : ""}
       </p>
 
-      <details className="mt-3 text-sm">
+      <details className="mt-2 text-sm">
         <summary className="cursor-pointer text-neutral-600 hover:text-neutral-900">View as table</summary>
         <table className="mt-2 w-full text-left text-xs">
           <thead className="text-neutral-600">

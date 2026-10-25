@@ -48,13 +48,14 @@ export function Calendar({
   const key = (d: number) => `${month}-${String(d).padStart(2, "0")}`;
   const maxGuests = Math.max(0, ...Array.from({ length: count }, (_, i) => stats[key(i + 1)]?.guests ?? 0));
   const title = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-  const nav = "rounded-lg border border-neutral-300 px-2.5 py-1 text-sm hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-900 outline-none";
+  const nav = "rounded-md border border-neutral-300 px-2 py-0.5 text-sm hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-900 outline-none";
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-medium">{title}</h3>
-        <div className="flex gap-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="font-semibold">Calendar</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{title}</span>
           <Link href={`?month=${shift(month, -1)}`} className={nav} aria-label="Previous month">
             ←
           </Link>
@@ -64,7 +65,7 @@ export function Calendar({
         </div>
       </div>
 
-      <table className="w-full table-fixed border-separate border-spacing-0.5 text-left">
+      <table className="w-full table-fixed border-separate border-spacing-px text-left">
         <thead>
           <tr>
             {WEEKDAYS.map((w) => (
@@ -87,22 +88,20 @@ export function Calendar({
                   <td
                     key={c}
                     aria-label={`${title.split(" ")[0]} ${d}: ${s ? `${s.events} ${s.events === 1 ? "event" : "events"}, ${s.guests} ${s.guests === 1 ? "guest" : "guests"}` : "no events"}`}
-                    className={`h-14 rounded-lg border align-top sm:h-20 ${isToday ? "border-neutral-900" : "border-neutral-200"}`}
+                    className={`h-12 rounded-md border align-top sm:h-11 ${isToday ? "border-neutral-900" : "border-neutral-200"}`}
                     style={{ backgroundColor: bucket >= 0 ? RAMP[Math.max(0, bucket)] : "#fff" }}
                   >
-                    <div className="flex h-full flex-col p-1 text-[11px] leading-tight sm:p-1.5 sm:text-xs">
+                    <div className="flex h-full flex-col p-1 text-[11px] leading-tight">
                       <span className={isToday ? "font-semibold" : "text-neutral-700"}>{d}</span>
                       {s && (
-                        <div className="mt-auto flex flex-col gap-0.5 text-neutral-950">
+                        <div className="mt-auto flex flex-col text-neutral-950 sm:flex-row sm:gap-2">
                           <span className="flex items-center gap-1">
                             <Icon kind="event" />
                             <b className="font-semibold">{s.events}</b>
-                            <span className="hidden text-neutral-700 sm:inline">{s.events === 1 ? "event" : "events"}</span>
                           </span>
                           <span className="flex items-center gap-1">
                             <Icon kind="guest" />
                             <b className="font-semibold">{s.guests}</b>
-                            <span className="hidden text-neutral-700 sm:inline">{s.guests === 1 ? "guest" : "guests"}</span>
                           </span>
                         </div>
                       )}
@@ -115,7 +114,7 @@ export function Calendar({
         </tbody>
       </table>
 
-      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600">
+      <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600">
         <span className="flex items-center gap-1"><Icon kind="event" /> events that day</span>
         <span className="flex items-center gap-1"><Icon kind="guest" /> guests booked</span>
         <span className="flex items-center gap-1">
