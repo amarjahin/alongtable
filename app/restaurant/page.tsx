@@ -6,11 +6,13 @@ import { Calendar } from "@/components/dashboard/calendar";
 import { GuestsChart } from "@/components/dashboard/guests-chart";
 import { ConfirmDelete } from "@/components/dashboard/confirm-delete";
 import { ImageUpload } from "@/components/dashboard/image-upload";
+import { NextMoveCard } from "@/components/dashboard/next-move-card";
 import { SpacesFilter } from "@/components/dashboard/spaces-filter";
 import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { SeatRow } from "@/components/ui/seat-row";
+import { isFilling, nextMove } from "@/lib/next-move";
 import { getCurrentRestaurant } from "@/lib/session";
 import { listSpaces, type Space } from "@/lib/spaces";
 import { statsByDay, summarize } from "@/lib/stats";
@@ -40,9 +42,8 @@ export default function RestaurantPage({ searchParams }: { searchParams: Params 
 /** Mint = booked, apricot = filling up (three quarters full or more), sunken = still open. */
 function statusChip(s: Space) {
   if (!s.event) return <Badge tone="neutral">Open</Badge>;
-  const { seatsTaken, capacity } = s.event;
-  if (seatsTaken >= capacity) return <Badge tone="booked">Full</Badge>;
-  if (seatsTaken / capacity >= 0.75) return <Badge tone="filling">Filling up</Badge>;
+  if (s.event.seatsTaken >= s.event.capacity) return <Badge tone="booked">Full</Badge>;
+  if (isFilling(s)) return <Badge tone="filling">Filling up</Badge>;
   return <Badge tone="booked">Booked</Badge>;
 }
 
@@ -133,14 +134,17 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
         </div>
       </header>
 
-      <ImageUpload
-        action={uploadRestaurantPhoto}
-        photoUrl={restaurant.photoUrl}
-        alt={`Inside ${restaurant.name}`}
-        addLabel="Add a photo"
-        changeLabel="Change photo"
-        guidance="Add a photo of your real space, like a table set for service. It shows on your event cards, so guests can picture the evening. Only upload photos you have the right to use."
-      />
+      {/* ImageUpload takes no id, so the wrapper is the "Add a photo" next move's target. */}
+      <div id="restaurant-photo" className="scroll-mt-4">
+        <ImageUpload
+          action={uploadRestaurantPhoto}
+          photoUrl={restaurant.photoUrl}
+          alt={`Inside ${restaurant.name}`}
+          addLabel="Add a photo"
+          changeLabel="Change photo"
+          guidance="Add a photo of your real space, like a table set for service. It shows on your event cards, so guests can picture the evening. Only upload photos you have the right to use."
+        />
+      </div>
 
       {registered && (
         <p role="status" className="alt-notice alt-notice--success">
@@ -156,6 +160,8 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
           Your space is live. Guests can book it now.
         </p>
       )}
+
+      <NextMoveCard move={nextMove(spaces, new Date(), Boolean(restaurant.photoUrl))} />
 
       <StatTiles
         items={[

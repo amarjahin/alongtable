@@ -14,7 +14,7 @@ import {
 import { getCurrentRestaurant, setCurrentRestaurant } from "@/lib/session";
 import { AREAS, CAPACITIES, FEATURES, PRICES, SLOTS } from "@/lib/space-options";
 import { createSpace, listSpaces, registerRestaurant } from "@/lib/spaces";
-import { seattleDateKey, seattleToUtc, upcomingDays } from "@/lib/time";
+import { seattleDateKey, seattleHHMM, seattleToUtc, upcomingDays } from "@/lib/time";
 
 // Server actions for the "Set up from Google Maps" flow on /restaurant/signup.
 
@@ -44,9 +44,6 @@ export async function registerFromProfile(
     return { ok: false, error: "We couldn't register your restaurant. Please try again." };
   }
 }
-
-const seattleHHMM = (iso: string) =>
-  new Date(iso).toLocaleTimeString("en-US", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
 /** Suggest spots for the signed-in restaurant, skipping ones it already published. */
 export async function getSuggestions(

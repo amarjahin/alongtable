@@ -51,6 +51,11 @@ export function upcomingDays(count: number): DayOption[] {
   });
 }
 
+/** "HH:MM" (24-hour) of an instant in Seattle, e.g. "18:00". Matches the `start` of a SLOTS entry. */
+export function seattleHHMM(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+
 /** "YYYY-MM-DD" of an instant, as a Seattle calendar day. */
 export function seattleDateKey(d: Date): string {
   return d.toLocaleDateString("en-CA", { timeZone: TZ });
