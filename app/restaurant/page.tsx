@@ -104,8 +104,8 @@ async function Dashboard({
         ]}
       />
 
-      <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-neutral-200 bg-white p-4">
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <section className="flex flex-col rounded-xl border border-neutral-200 bg-white p-4">
           <h2 className="font-semibold">Guests booked</h2>
           <p className="mb-2 text-sm text-neutral-600">By event day, next 14 days</p>
           <GuestsChart days={chartDays} />

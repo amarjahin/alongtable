@@ -12,7 +12,7 @@ const AXIS = "#c3c2b7";
 const BAND = "#f4f3ef";
 const MUTED = "#898781";
 
-const H = 176;
+const MIN_H = 176;
 const M = { t: 18, r: 8, b: 34, l: 28 };
 const MAX_BAR = 24;
 const GAP = 2;
@@ -25,7 +25,9 @@ function columnPath(x: number, y: number, w: number, h: number) {
 
 export function GuestsChart({ days }: { days: DayPoint[] }) {
   const [active, setActive] = useState<number | null>(null);
-  const [W, setW] = useState(480); // drawn at the container's real width so text stays readable
+  // Drawn at the container's real size so text stays readable and the chart fills its card.
+  const [W, setW] = useState(480);
+  const [H, setH] = useState(MIN_H);
   const box = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
   const n = days.length;
@@ -33,7 +35,10 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.max(260, Math.round(e.contentRect.width))));
+    const ro = new ResizeObserver(([e]) => {
+      setW(Math.max(260, Math.round(e.contentRect.width)));
+      setH(Math.max(MIN_H, Math.round(e.contentRect.height)));
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -65,12 +70,12 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
   }
 
   return (
-    <div>
-      <div ref={box} className="relative">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div ref={box} className="relative min-h-44 flex-1">
         <svg
           ref={svg}
           viewBox={`0 0 ${W} ${H}`}
-          className="block h-auto w-full touch-pan-y rounded outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+          className="absolute inset-0 block h-full w-full touch-pan-y rounded outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
           tabIndex={0}
           role="img"
           aria-label={`Bar chart of guests booked per event day for the next ${n} days. Use the left and right arrow keys to read each day.`}
@@ -141,7 +146,7 @@ export function GuestsChart({ days }: { days: DayPoint[] }) {
           </div>
         )}
 
-        {max === 0 && (
+        {max === 0 && active === null && (
           <p className="pointer-events-none absolute inset-x-0 top-1/3 text-center text-sm text-neutral-600">
             No guests booked yet
           </p>
