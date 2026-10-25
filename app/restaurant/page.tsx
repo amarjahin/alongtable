@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { CalendarBlank, CheckCircle, Clock, HandWaving, Plus } from "@phosphor-icons/react/ssr";
 import { Calendar } from "@/components/dashboard/calendar";
 import { GuestsChart } from "@/components/dashboard/guests-chart";
+import { SpacesFilter } from "@/components/dashboard/spaces-filter";
 import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -144,21 +145,25 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
         </section>
       </div>
 
-      <section>
-        <h2 className="alt-h2 mb-4">My spaces</h2>
-        {spaces.length === 0 ? (
+      {spaces.length === 0 ? (
+        <section className="flex flex-col gap-4">
+          <h2 className="alt-h2">My spaces</h2>
           <div className="alt-card flex flex-col items-start gap-3">
             <p className="alt-title">No spaces yet</p>
             <p className="alt-secondary">Publish your first table to get started.</p>
             <ButtonLink href="/restaurant/new">Publish a space</ButtonLink>
           </div>
-        ) : (
-          <ul className="grid gap-4 lg:grid-cols-2">
-            {spaces.map((s) => {
-              const start = new Date(s.startsAt);
-              const end = new Date(s.endsAt);
-              const seats = s.event ?? { seatsTaken: 0, capacity: s.capacity };
-              return (
+        </section>
+      ) : (
+        <SpacesFilter
+          items={spaces.map((s) => {
+            const start = new Date(s.startsAt);
+            const end = new Date(s.endsAt);
+            const seats = s.event ?? { seatsTaken: 0, capacity: s.capacity };
+            return {
+              id: s.id,
+              kind: s.event ? ("booked" as const) : ("open" as const),
+              node: (
                 <li key={s.id} className="alt-card flex flex-col gap-4">
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="alt-title">{s.label}</h3>
@@ -207,11 +212,11 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
                     </form>
                   )}
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+              ),
+            };
+          })}
+        />
+      )}
     </div>
   );
 }
