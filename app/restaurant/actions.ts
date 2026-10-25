@@ -7,6 +7,7 @@ import { seattleToUtc } from "@/lib/time";
 
 export type FormState = {
   errors?: Record<string, string>;
+  formError?: string;
   values?: Record<string, string>;
 };
 
@@ -41,16 +42,21 @@ export async function publishSpace(_prev: FormState, formData: FormData): Promis
 
   if (Object.keys(errors).length || !startsAt || !endsAt) return { errors, values };
 
-  await createSpace({
-    restaurantName: values.restaurantName,
-    location: values.location,
-    label: values.label,
-    startsAt: startsAt.toISOString(),
-    endsAt: endsAt.toISOString(),
-    capacity,
-    description: values.description || null,
-    priceInfo: values.priceInfo || null,
-  });
+  try {
+    await createSpace({
+      restaurantName: values.restaurantName,
+      location: values.location,
+      label: values.label,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      capacity,
+      description: values.description || null,
+      priceInfo: values.priceInfo || null,
+    });
+  } catch (err) {
+    console.error(err);
+    return { formError: "We couldn't publish the space. Please try again.", values };
+  }
 
   revalidatePath("/restaurant");
   redirect("/restaurant?published=1");

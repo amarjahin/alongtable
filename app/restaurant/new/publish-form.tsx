@@ -25,6 +25,11 @@ export function PublishForm() {
       <TextField name="description" multiline label="Description (optional)" defaultValue={v.description} placeholder="Long communal table by the window." />
       <TextField name="priceInfo" label="Pricing info (optional)" defaultValue={v.priceInfo} placeholder="$25 minimum spend per person" hint="Shown to people booking the space. No payments are collected in V0." />
       <p className="text-xs text-neutral-500">Times are in Seattle time (Pacific).</p>
+      {state.formError && (
+        <p role="alert" className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          {state.formError}
+        </p>
+      )}
       <div className="flex gap-3">
         <Button type="submit" disabled={pending}>
           {pending ? "Publishing…" : "Publish space"}
