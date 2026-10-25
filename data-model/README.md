@@ -136,6 +136,10 @@ Store UTC in `timestamptz`. Display in `America/Los_Angeles`. The publish action
 
 Reset truncates `spaces`, `events`, and `reservations` and leaves `restaurants` in place. Run the seed again afterwards to restore the sample data.
 
+### More demo data: ten invented Seattle restaurants
+
+`scripts/seed-seattle-demo.mjs` adds ten invented restaurants (made-up names, real neighborhoods) with a booked event, guests and an open space each, plus photos. Run it after the schema and both migrations: `node --env-file=.env.local scripts/seed-seattle-demo.mjs --photos DIR` (the photos are optional). It is safe to re-run: it only fills in what is missing, and books spaces through `create_event_for_space` and `reserve_seat`. After a reset, run it again to restore them. The photos are placeholders from Wikimedia Commons, credited in [`supabase/photo-credits.md`](../supabase/photo-credits.md).
+
 ## Left out of V0
 
 No `users` table, party size, payments, cancellations, waitlists, or recurring slots. `price_info` is text the restaurant typed in, not a charge.
