@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { niceStep } from "@/lib/chart";
 
 export type DayPoint = {
   key: string;
@@ -32,14 +33,6 @@ const GAP = 2;
 function columnPath(x: number, y: number, w: number, h: number, r: number) {
   const k = Math.min(r, w / 2, h);
   return `M${x},${y + h} V${y + k} Q${x},${y} ${x + k},${y} H${x + w - k} Q${x + w},${y} ${x + w},${y + k} V${y + h} Z`;
-}
-
-/** Round a tick spacing up to 1, 2, 5 or 10 times a power of ten, so the axis shows round numbers. */
-export function niceStep(raw: number) {
-  if (raw <= 1) return 1;
-  const pow = 10 ** Math.floor(Math.log10(raw));
-  const f = raw / pow;
-  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pow;
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;

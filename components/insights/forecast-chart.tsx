@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { niceStep } from "@/components/dashboard/guests-chart";
+import { niceStep } from "@/lib/chart";
 import type { ForecastPoint, WeekPoint } from "@/lib/insights";
 
 // Seats booked per week: 8 past weeks as a solid basil line, 4 forecast weeks as a
