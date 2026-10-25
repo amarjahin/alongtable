@@ -7,13 +7,30 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import { createEvent, type FormState } from "../../actions";
 
-export function CreateEventForm({ spaceId, capacity }: { spaceId: string; capacity: number }) {
+/** Starting values, e.g. an event drafted by the AI planner. */
+export type EventDraft = { title: string; description: string; capacity: string };
+
+export function CreateEventForm({
+  spaceId,
+  capacity,
+  draft = null,
+}: {
+  spaceId: string;
+  capacity: number;
+  draft?: EventDraft | null;
+}) {
   const [state, action, pending] = useActionState<FormState, FormData>(createEvent, {});
-  const v = state.values ?? {};
+  // After a failed submit, show what the user typed; otherwise start from the draft.
+  const v: Record<string, string> = state.values ?? draft ?? {};
 
   return (
     <Form action={action} errors={state.errors} className="flex flex-col gap-5">
       <input type="hidden" name="spaceId" value={spaceId} />
+      {draft && !state.values && (
+        <p className="rounded-lg bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+          Drafted by the AI planner. Review and edit anything before publishing.
+        </p>
+      )}
       <TextField name="title" label="Event title" defaultValue={v.title} placeholder="Debating Pythagoras" />
       <TextField
         name="description"
@@ -30,7 +47,7 @@ export function CreateEventForm({ spaceId, capacity }: { spaceId: string; capaci
         step={1}
         inputMode="numeric"
         label="Available spots"
-        defaultValue={v.capacity ?? String(capacity)}
+        defaultValue={v.capacity || String(capacity)}
         hint={`How many people can join, up to ${capacity} (the space's capacity).`}
       />
       <TextField name="organizerName" label="Your name" defaultValue={v.organizerName} autoComplete="name" />

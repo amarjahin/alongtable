@@ -5,25 +5,39 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { getSpace } from "@/lib/spaces";
 import { formatDate, formatTimeRange } from "@/lib/time";
-import { CreateEventForm } from "./create-event-form";
+import { CreateEventForm, type EventDraft } from "./create-event-form";
 
 export const metadata: Metadata = { title: "Create an event · ALongTable" };
 
-export default function CreateEventPage({ params }: PageProps<"/spaces/[id]/create-event">) {
+export default function CreateEventPage({ params, searchParams }: PageProps<"/spaces/[id]/create-event">) {
   return (
     <main className="mx-auto w-full max-w-xl px-4 py-8">
       <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
-        {params.then(({ id }) => (
-          <Content id={id} />
+        {Promise.all([params, searchParams]).then(([{ id }, query]) => (
+          <Content id={id} query={query} />
         ))}
       </Suspense>
     </main>
   );
 }
 
-async function Content({ id }: { id: string }) {
+type Query = Record<string, string | string[] | undefined>;
+
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() ?? "";
+
+/** Draft from the URL, e.g. links from the AI planner (/plan). Everything stays editable. */
+function draftFromQuery(query: Query, spaceCapacity: number): EventDraft | null {
+  const title = first(query.title).slice(0, 120);
+  const description = first(query.description).slice(0, 1000);
+  const spots = Number(first(query.capacity));
+  const capacity = Number.isInteger(spots) && spots >= 1 ? String(Math.min(spots, spaceCapacity)) : "";
+  return title || description || capacity ? { title, description, capacity } : null;
+}
+
+async function Content({ id, query }: { id: string; query: Query }) {
   const space = await getSpace(id);
   if (!space) notFound();
+  const draft = draftFromQuery(query, space.capacity);
 
   // Reading the clock is request-time work under Cache Components.
   await connection();
@@ -51,7 +65,7 @@ async function Content({ id }: { id: string }) {
       </section>
 
       {bookable ? (
-        <CreateEventForm spaceId={space.id} capacity={space.capacity} />
+        <CreateEventForm spaceId={space.id} capacity={space.capacity} draft={draft} />
       ) : (
         <p role="status" className="rounded-lg bg-neutral-100 px-4 py-3 text-sm text-neutral-700">
           {space.status === "booked" ? "This space has already been booked." : "This space is no longer available."}{" "}
