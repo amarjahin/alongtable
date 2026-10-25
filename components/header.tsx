@@ -6,7 +6,6 @@ import { getCurrentRestaurant } from "@/lib/session";
 const links = [
   { href: "/events", label: "Find events" },
   { href: "/spaces", label: "Host an event" },
-  { href: "/plan", label: "Plan with AI" },
   { href: "/restaurant", label: "For restaurants" },
 ];
 

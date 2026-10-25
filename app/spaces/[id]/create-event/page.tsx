@@ -25,7 +25,7 @@ type Query = Record<string, string | string[] | undefined>;
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() ?? "";
 
-/** Draft from the URL, e.g. links from the AI planner (/plan). Everything stays editable. */
+/** Draft from the URL, e.g. links from the AI planner (/spaces?tab=plan). Everything stays editable. */
 function draftFromQuery(query: Query, spaceCapacity: number): EventDraft | null {
   const title = first(query.title).slice(0, 120);
   const description = first(query.description).slice(0, 1000);
