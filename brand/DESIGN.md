@@ -260,13 +260,14 @@ Built on **Base UI** (unstyled, accessible React primitives). Base UI renders th
 | Quiet button | `alt-button alt-button--quiet` | `Button` | Text only, for "Cancel" and "Back". |
 | Danger button | `alt-button alt-button--danger` | `Button` | Red. Only inside a confirmation dialog. |
 | Status chip | `alt-chip alt-chip--{booked, filling, info, problem}` | none | Mint, apricot, sky, red text on white. |
-| Notice | `alt-notice alt-notice--{info, success, problem}` | none | "Here's what happens next" messages. |
+| Notice | `alt-notice alt-notice--{info, success, filling, problem}` | none | "Here's what happens next" messages. Apricot (`--filling`) is for "nothing is lost, have another look", such as a partial publish to retry. |
 | Answer number | `alt-answer` | none | The big fact that leads a dashboard. |
 | List row | `alt-list`, `alt-row` | none | Rows with a divider between them, inside a card. |
 | Seat row | `alt-seats` | none | Rendered by `brand.js` from `data-alt-seats` and `data-alt-taken`. |
 | Card | `alt-card` | none | White, no border, no shadow. |
 | Text field | `alt-field`, `alt-label`, `alt-input`, `alt-help`, `alt-error` | `Field.Root`, `Field.Label`, `Field.Control`, `Field.Description`, `Field.Error` | Error in red with a sentence that says how to fix it. |
 | Checkbox | `alt-checkbox` | `Checkbox.Root`, `Checkbox.Indicator` | Basil when checked. |
+| Switch | `alt-switch`, `alt-switch__thumb` | `Switch.Root`, `Switch.Thumb` | On/off for a row, like choosing which dates to publish. Basil when on, field border when off. Styled from `[data-checked]` and `[data-disabled]`. Give it an `aria-label` that names the row. |
 | Tabs | `alt-tabs`, `alt-tab` | `Tabs.List`, `Tabs.Tab` | Sunken track, white selected tab. |
 | Dialog | `alt-dialog`, `alt-backdrop` | `Dialog.Popup`, `Dialog.Backdrop` | Confirmations before anything that can't be undone. |
 | Toast | `alt-toast` | `Toast.Root` | "You're in", "Space published". |
@@ -294,10 +295,17 @@ Motion is slow enough to feel calm and only ever confirms something the person d
 | Seats-left count changes | The number swaps, no counting animation | instant |
 | Button press | Darkens to the hover color | 120ms |
 | Toast | Fades in and rises 4px | 240ms |
+| Onboarding step arrives (`alt-step-in`) | Fades in and slides 20px from the right (from the left when going back) | 300ms |
+| Seats appear on a new space (`alt-seats--pop`) | Each seat pops in, one after another | 300ms each, 60ms apart |
+| Rows appear for the first time (`alt-rise`) | Fade in and rise 8px, one after another | 300ms each, 90ms apart |
+| Space goes live (`alt-draw`) | The check mark draws itself | 500ms, after 350ms |
+| Nothing selected (`alt-shake`) | The list shakes 6px left and right once | 360ms |
+| Loading placeholder (`alt-pulse`) | Fades between full and 45% opacity while work is in progress | 1s, repeats until loaded |
 
 - Easing: `cubic-bezier(0.25, 0.1, 0.25, 1)` for everything. No overshoot, no bounce.
-- Nothing moves on its own. No looping animations, no parallax, no auto-advancing carousels.
-- If the person has asked for reduced motion, everything is instant.
+- Nothing moves on its own. No looping animations, no parallax, no auto-advancing carousels. The one exception is `alt-pulse` on a loading placeholder, which stops as soon as the content arrives.
+- Keep motion to the moments in the table. No page-load animation on the dashboard.
+- If the person has asked for reduced motion, everything is instant: the duration tokens drop to 0 and every keyframe above is set to `animation: none`.
 
 ---
 

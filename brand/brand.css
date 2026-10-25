@@ -81,6 +81,11 @@
   --alt-dur-press: 120ms;
   --alt-dur-toast: 240ms;
   --alt-dur-seat: 300ms;
+  --alt-dur-draw: 500ms;        /* the Live check mark drawing itself */
+  --alt-dur-shake: 360ms;       /* "pick at least one" nudge */
+  --alt-dur-pulse: 1s;          /* loading placeholders only */
+  --alt-stagger-seat: 60ms;     /* seats popping in one after another */
+  --alt-stagger-row: 90ms;      /* rows rising in one after another */
 
   /* Focus ring: basil, visible on every surface */
   --alt-focus: 0 0 0 2px var(--alt-surface), 0 0 0 4px var(--alt-basil);
@@ -91,6 +96,11 @@
     --alt-dur-press: 0ms;
     --alt-dur-toast: 0ms;
     --alt-dur-seat: 0ms;
+    --alt-dur-draw: 0ms;
+    --alt-dur-shake: 0ms;
+    --alt-dur-pulse: 0ms;
+    --alt-stagger-seat: 0ms;
+    --alt-stagger-row: 0ms;
   }
 }
 
@@ -156,7 +166,8 @@ body.alt-root {
 .alt-input:focus-visible,
 .alt-checkbox:focus-visible,
 .alt-tab:focus-visible,
-.alt-link:focus-visible {
+.alt-link:focus-visible,
+.alt-switch:focus-visible {
   outline: none;
   box-shadow: var(--alt-focus);
 }
@@ -249,6 +260,7 @@ body.alt-root {
 }
 .alt-notice--info { background: var(--alt-sky); }
 .alt-notice--success { background: var(--alt-mint); }
+.alt-notice--filling { background: var(--alt-status-filling); }
 .alt-notice--problem { background: var(--alt-page); color: var(--alt-red); font-weight: var(--alt-weight-semibold); }
 .alt-notice .alt-icon { flex: none; margin-top: 1px; }
 .alt-notice--problem .alt-icon { color: var(--alt-red); }
@@ -365,6 +377,31 @@ textarea.alt-input { min-height: 112px; padding: var(--alt-space-3) var(--alt-sp
 .alt-checkbox:checked { background: var(--alt-basil); border-color: var(--alt-basil); }
 .alt-checkbox:checked::after { content: ""; width: 10px; height: 6px; border-left: 2px solid #FFFFFF; border-bottom: 2px solid #FFFFFF; transform: translateY(-1px) rotate(-45deg); }
 
+/* Switch (Base UI: Switch.Root renders role="switch" with data-checked / data-disabled; Switch.Thumb inside) */
+.alt-switch {
+  width: 52px;
+  height: 32px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--alt-field-border);
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background var(--alt-dur-toast) var(--alt-ease);
+  flex: none;
+}
+.alt-switch[data-checked] { background: var(--alt-basil); }
+.alt-switch[data-disabled] { opacity: .5; cursor: not-allowed; }
+.alt-switch__thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--alt-surface);
+  transition: transform var(--alt-dur-toast) var(--alt-ease);
+}
+.alt-switch[data-checked] .alt-switch__thumb { transform: translateX(20px); }
+
 /* Tabs (Base UI: Tabs.List, Tabs.Tab renders role="tab" aria-selected) */
 .alt-tabs {
   display: inline-flex;
@@ -478,3 +515,64 @@ textarea.alt-input { min-height: 112px; padding: var(--alt-space-3) var(--alt-sp
 /* Brand band (expressive only) */
 .alt-band-deep { background: var(--alt-basil-deep); color: #FFFFFF; }
 .alt-band-deep .alt-secondary { color: var(--alt-mint); }
+
+/* Motion moments (DESIGN.md → Motion). Each only confirms something the person did,
+   except alt-pulse, which marks a loading placeholder while work is in progress. */
+
+/* An onboarding step card arriving. Add --back when the person goes back a step. */
+.alt-step-in { animation: alt-step-in var(--alt-dur-seat) var(--alt-ease) both; }
+.alt-step-in--back { animation-name: alt-step-in-back; }
+@keyframes alt-step-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes alt-step-in-back {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Seats popping in one after another: set style="animation-delay: calc(var(--alt-stagger-seat) * i)" per seat. */
+.alt-seats--pop .alt-seat { animation: alt-seat-in var(--alt-dur-seat) var(--alt-ease) both; }
+
+/* Loading placeholder */
+.alt-pulse { animation: alt-pulse var(--alt-dur-pulse) var(--alt-ease) infinite; }
+@keyframes alt-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .45; }
+}
+
+/* Rows rising in when they first appear: stagger with calc(var(--alt-stagger-row) * i). */
+.alt-rise { animation: alt-rise var(--alt-dur-seat) var(--alt-ease) both; }
+@keyframes alt-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* A check mark drawing itself. Put the class on the SVG path. */
+.alt-draw {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: alt-draw var(--alt-dur-draw) var(--alt-ease) 350ms forwards;
+}
+@keyframes alt-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* "Pick something first" nudge. Retrigger by changing the element's React key. */
+.alt-shake { animation: alt-shake var(--alt-dur-shake) var(--alt-ease); }
+@keyframes alt-shake {
+  0%, 100% { transform: none; }
+  33% { transform: translateX(-6px); }
+  66% { transform: translateX(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alt-step-in,
+  .alt-seats--pop .alt-seat,
+  .alt-seat[data-pop],
+  .alt-pulse,
+  .alt-rise,
+  .alt-shake,
+  .alt-toast { animation: none; }
+  .alt-draw { animation: none; stroke-dashoffset: 0; }
+}
