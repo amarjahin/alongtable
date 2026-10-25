@@ -44,8 +44,7 @@ export async function publishSpace(_prev: FormState, formData: FormData): Promis
 
   try {
     await createSpace({
-      restaurantId: restaurant.id,
-      restaurantName: restaurant.name,
+        restaurantName: restaurant.name,
       location: restaurant.location,
       label: area,
       startsAt: startsAt.toISOString(),
