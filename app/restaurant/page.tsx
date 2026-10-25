@@ -123,7 +123,9 @@ async function Dashboard({ searchParams }: { searchParams: Params }) {
       {registered && (
         <p role="status" className="alt-notice alt-notice--success">
           <CheckCircle size={24} aria-hidden="true" className="alt-icon" />
-          You&apos;re set up. Publish your first space below and guests can book it.
+          {spaces.length > 0
+            ? "You're set up. Hosts can book your spaces now, and bookings show up here."
+            : "You're set up. Publish your first space below and guests can book it."}
         </p>
       )}
       {published && (

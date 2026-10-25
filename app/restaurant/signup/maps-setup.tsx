@@ -3,29 +3,30 @@
 import { useRef, useState, type FormEvent, type ReactNode, type Ref } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Switch } from "@base-ui/react/switch";
 import { CheckCircle, CircleNotch, Info, MapPin, WarningCircle } from "@phosphor-icons/react/ssr";
 import { StepBar, Steps, type Step } from "@/components/onboarding/steps";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { SeatRow } from "@/components/ui/seat-row";
 import type { RestaurantProfile, SpotSuggestion } from "@/lib/onboarding";
 import { PRICES, SLOTS } from "@/lib/space-options";
 import { getSuggestions, publishSuggestion, registerFromProfile } from "./onboard-actions";
 import { SAMPLE_PROFILE } from "./sample-profile";
 
-type Stage = "link" | "researching" | "review" | "suggesting" | "suggestions";
+type Stage = "link" | "researching" | "review" | "suggesting" | "suggestions" | "live";
 type Source = "live" | "sample" | "manual";
 /** A Pick-dates row after a publish attempt. */
 type RowState = { status: "published" } | { status: "failed"; error: string };
 
 const icon = { size: 24, "aria-hidden": true, className: "alt-icon" } as const;
 
-const STEP_OF: Record<Stage, Step> = { link: 1, researching: 1, review: 2, suggesting: 2, suggestions: 3 };
+const STEP_OF: Record<Stage, Step> = { link: 1, researching: 1, review: 2, suggesting: 2, suggestions: 3, live: 4 };
 
 /** The step list (desktop) or progress bar (mobile) beside the current step's card. */
-function Layout({ step, back, title, lead, children, after }: {
+function Layout({ step, back, top, title, lead, children, after }: {
   step: Step;
   back: boolean;
+  top?: ReactNode;
   title: string;
   lead?: ReactNode;
   children: ReactNode;
@@ -42,6 +43,7 @@ function Layout({ step, back, title, lead, children, after }: {
         </div>
         <div key={step} className={`alt-step-in ${back ? "alt-step-in--back" : ""} flex flex-col gap-6`}>
           <header className="flex flex-col gap-2">
+            {top}
             <h1 className="alt-h2">{title}</h1>
             {lead && <p className="alt-lead alt-secondary">{lead}</p>}
           </header>
@@ -84,7 +86,6 @@ export function MapsSetup() {
   const [pickError, setPickError] = useState(false);
   const [shake, setShake] = useState(0);
   const [failure, setFailure] = useState<{ failed: number; of: number } | null>(null);
-  const router = useRouter();
   const abortRef = useRef<AbortController | null>(null);
 
   // Remember the direction so the next step card slides in from the correct side.
@@ -233,7 +234,7 @@ export function MapsSetup() {
     }
     setPublishing(false);
     setFailure(failed ? { failed, of: todo.length } : null);
-    if (!failed) router.push("/restaurant?published=1");
+    if (!failed) setStage("live");
   }
 
   // ---- Stage: paste link / researching -----------------------------------
@@ -398,6 +399,54 @@ export function MapsSetup() {
             </button>
           )}
         </form>
+      </Layout>
+    );
+  }
+
+  // ---- Stage: live --------------------------------------------------------
+  if (stage === "live") {
+    const live = suggestions.filter((_, i) => rows[i]?.status === "published");
+    const one = live.length === 1;
+    return (
+      <Layout
+        step={4}
+        back={back}
+        top={
+          <span className="mb-4 inline-flex size-[72px] items-center justify-center rounded-full bg-mint" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none">
+              <path
+                className="alt-draw"
+                d="M5 12.5l4.5 4.5L19 7.5"
+                style={{ stroke: "var(--alt-basil)", strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round" }}
+              />
+            </svg>
+          </span>
+        }
+        title={one ? "Your space is live" : `Your ${live.length} spaces are live`}
+        lead={`Hosts can book ${one ? "it" : "them"} now. You'll see bookings on your dashboard.`}
+      >
+        <div className="flex flex-col gap-6">
+          <ul className="flex flex-col gap-3" aria-label="Published spaces">
+            {live.map((s, i) => (
+              <li
+                key={`${s.date}-${s.slot}-${s.area}`}
+                className="alt-rise flex flex-col gap-3 rounded-control bg-sunken p-4"
+                style={{ animationDelay: `calc(var(--alt-stagger-row) * ${i})` }}
+              >
+                <div className="alt-row__main">
+                  <span className="alt-row__title">{whenLabel(s)}</span>
+                  <span className="alt-secondary">
+                    {s.area} · {s.capacity} seats open
+                  </span>
+                </div>
+                <SeatRow total={s.capacity} taken={0} pop count={false} />
+              </li>
+            ))}
+          </ul>
+          <ButtonLink href={returning ? "/restaurant" : "/restaurant?registered=1"} className="alt-button--block">
+            Go to my dashboard
+          </ButtonLink>
+        </div>
       </Layout>
     );
   }
