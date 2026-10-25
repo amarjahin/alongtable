@@ -120,9 +120,13 @@ Store UTC in `timestamptz`. Display in `America/Los_Angeles`. The publish action
 
 ## Seed and reset
 
-`supabase/seed.sql` inserts one Seattle restaurant, Il Nido, and no spaces.
+`supabase/seed.sql` inserts three Seattle restaurants: Il Nido, Harbor & Pine, and Saffron Table.
 
-Reset truncates `spaces`, `events`, and `reservations` and leaves `restaurants` in place.
+- Il Nido gets no spaces, so the demo's first step (publishing two spaces) starts clean.
+- Harbor & Pine and Saffron Table get sample spaces dated relative to today in Seattle. Two of them are booked through `create_event_for_space`, and their reservations go through `reserve_seat`. One event is sold out.
+- Re-running is safe. Restaurants are skipped on conflict, and sample spaces are added only when those two restaurants have none.
+
+Reset truncates `spaces`, `events`, and `reservations` and leaves `restaurants` in place. Run the seed again afterwards to restore the sample data.
 
 ## Left out of V0
 

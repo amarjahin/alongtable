@@ -22,7 +22,8 @@ npm run dev
 
 Database scripts (run in the Supabase SQL Editor):
 
-- `supabase/reset.sql`: wipe spaces, events and reservations before a demo run. Keeps restaurants.
+- `supabase/seed.sql`: add three restaurants plus sample spaces, events and reservations (Il Nido is left empty for the live demo). Safe to re-run.
+- `supabase/reset.sql`: wipe spaces, events and reservations before a demo run. Keeps restaurants. Run `seed.sql` afterwards to restore the sample data.
 - `supabase/drop.sql`, then `schema.sql`, then `seed.sql`: rebuild from scratch after a schema change. Deletes all data.
 
 ---
