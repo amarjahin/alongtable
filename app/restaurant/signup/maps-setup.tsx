@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode, type Ref } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { CheckCircle, Info, MapPin, WarningCircle } from "@phosphor-icons/react/ssr";
 import { StepBar, Steps, type Step } from "@/components/onboarding/steps";
@@ -11,6 +12,7 @@ import { getSuggestions, publishSuggestion, registerFromProfile } from "./onboar
 import { SAMPLE_PROFILE } from "./sample-profile";
 
 type Stage = "link" | "researching" | "review" | "suggesting" | "suggestions";
+type Source = "live" | "sample" | "manual";
 type CardState = "idle" | "publishing" | "published" | "skipped" | { error: string };
 
 const icon = { size: 24, "aria-hidden": true, className: "alt-icon" } as const;
@@ -48,42 +50,63 @@ function Layout({ step, back, title, lead, children, after }: {
   );
 }
 
-export function MapsSetup({ manual }: { manual?: ReactNode }) {
+/** A profile with only what the owner typed; suggestSpots treats it as "estimate". */
+function manualProfile(name: string, location: string): RestaurantProfile {
+  return { name, location, address: null, cuisine: null, priceRange: null, summary: null, hours: [], areas: [], sources: [], confidence: "low", missing: [], lat: null, lng: null };
+}
+
+export function MapsSetup() {
   const [stage, setStageRaw] = useState<Stage>("link");
+  const stageRef = useRef<Stage>("link");
   const [back, setBack] = useState(false);
   const [link, setLink] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [steps, setSteps] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<RestaurantProfile | null>(null);
-  const [isSample, setIsSample] = useState(false);
+  const [source, setSource] = useState<Source>("live");
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualLocation, setManualLocation] = useState("");
+  const [manualErrors, setManualErrors] = useState<{ name?: string; location?: string }>({});
+  const manualNameRef = useRef<HTMLInputElement>(null);
+  const [returning, setReturning] = useState(false);
   const [suggestions, setSuggestions] = useState<SpotSuggestion[]>([]);
   const [basis, setBasis] = useState<"hours" | "estimate">("hours");
   const [cards, setCards] = useState<Record<number, CardState>>({});
   const abortRef = useRef<AbortController | null>(null);
 
-  // Remember the direction so the next step card slides in from the right side.
+  // Remember the direction so the next step card slides in from the correct side.
   function setStage(next: Stage) {
-    setBack(STEP_OF[next] < STEP_OF[stage]);
+    setBack(STEP_OF[next] < STEP_OF[stageRef.current]);
+    stageRef.current = next;
     setStageRaw(next);
   }
 
-  function applyProfile(p: RestaurantProfile, sample: boolean) {
+  function applyProfile(p: RestaurantProfile, from: Source) {
     setProfile(p);
-    setIsSample(sample);
+    setSource(from);
     setName(p.name);
     setLocation(p.location);
     setError(null);
     setStage("review");
   }
 
+  /** "Enter my details myself": open the manual form and put the cursor in Restaurant name. */
+  function openManual() {
+    flushSync(() => setManualOpen(true));
+    manualNameRef.current?.focus();
+  }
+
   async function lookUp(e: FormEvent) {
     e.preventDefault();
     if (!link.trim()) {
-      setError("Paste your restaurant's Google Maps link.");
+      setLinkError("Paste your restaurant's Google Maps link.");
       return;
     }
+    setLinkError(null);
     abortRef.current?.abort();
     const abort = new AbortController();
     abortRef.current = abort;
@@ -115,7 +138,7 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
           if (!line.trim()) continue;
           const msg = JSON.parse(line);
           if (msg.type === "step") setSteps((s) => [...s, msg.message]);
-          else if (msg.type === "profile") return applyProfile(msg.profile, false);
+          else if (msg.type === "profile") return applyProfile(msg.profile, "live");
           else if (msg.type === "error") throw new Error(msg.message);
         }
       }
@@ -132,16 +155,22 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
   async function confirm(e: FormEvent) {
     e.preventDefault();
     if (!profile) return;
+    await registerAndSuggest(profile, name, location);
+  }
+
+  /** Register (or sign back in), then ask for dates. Shared by the Maps and manual paths. */
+  async function registerAndSuggest(p: RestaurantProfile, n: string, loc: string) {
     setError(null);
     setStage("suggesting");
-    const pin = profile.lat != null && profile.lng != null ? { lat: profile.lat, lng: profile.lng } : null;
-    const reg = await registerFromProfile(name, location, pin);
+    const pin = p.lat != null && p.lng != null ? { lat: p.lat, lng: p.lng } : null;
+    const reg = await registerFromProfile(n, loc, pin);
     if (!reg.ok) {
       setError(reg.error);
       setStage("review");
       return;
     }
-    const res = await getSuggestions({ ...profile, name, location });
+    setReturning(reg.returning);
+    const res = await getSuggestions({ ...p, name: n, location: loc });
     if (!res.ok) {
       setError(res.error);
       setSuggestions([]);
@@ -150,6 +179,21 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
       setBasis(res.basis);
     }
     setStage("suggestions");
+  }
+
+  async function submitManual(e: FormEvent) {
+    e.preventDefault();
+    const n = manualName.trim();
+    const loc = manualLocation.trim();
+    const errors = { name: n ? undefined : "Enter the restaurant name.", location: loc ? undefined : "Enter the location." };
+    setManualErrors(errors);
+    if (errors.name || errors.location) return;
+    const p = manualProfile(n, loc);
+    setProfile(p);
+    setSource("manual");
+    setName(n);
+    setLocation(loc);
+    await registerAndSuggest(p, n, loc);
   }
 
   async function publish(i: number) {
@@ -167,7 +211,45 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
         back={back}
         title="Find your restaurant"
         lead="Paste your Google Maps link and we'll fill in your details and suggest dates you could post. You check everything before anything goes live."
-        after={manual}
+        after={
+          <>
+            <details
+              id="manual-details"
+              className="alt-card !p-6 sm:!p-8"
+              open={manualOpen}
+              onToggle={(e) => setManualOpen(e.currentTarget.open)}
+            >
+              <summary className="cursor-pointer py-2.5 font-semibold">Enter your details yourself instead</summary>
+              <form onSubmit={submitManual} noValidate className="mt-6 flex flex-col gap-6">
+                <TextInput
+                  id="manual-name"
+                  label="Restaurant name"
+                  value={manualName}
+                  onChange={setManualName}
+                  error={manualErrors.name}
+                  placeholder="Il Nido"
+                  inputRef={manualNameRef}
+                />
+                <TextInput
+                  id="manual-location"
+                  label="Location"
+                  value={manualLocation}
+                  onChange={setManualLocation}
+                  error={manualErrors.location}
+                  placeholder="West Seattle, Seattle, WA"
+                  help="Neighborhood and city."
+                />
+                <Button type="submit" className="alt-button--block">
+                  Continue
+                </Button>
+              </form>
+            </details>
+            <p className="alt-notice alt-notice--info">
+              <Info {...icon} />
+              Already registered? Enter the same name and location to sign back in.
+            </p>
+          </>
+        }
       >
         <div className="flex flex-col gap-5">
           <form onSubmit={lookUp} className="flex flex-col gap-4">
@@ -185,8 +267,15 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
                 disabled={running}
+                aria-invalid={linkError ? true : undefined}
+                aria-describedby={linkError ? "maps-link-help maps-link-error" : "maps-link-help"}
               />
-              <p className="alt-help">In Google Maps, open your restaurant, tap Share, then Copy link.</p>
+              <p id="maps-link-help" className="alt-help">In Google Maps, open your restaurant, tap Share, then Copy link.</p>
+              {linkError && (
+                <p id="maps-link-error" role="alert" className="alt-error">
+                  {linkError}
+                </p>
+              )}
             </div>
             <Button type="submit" disabled={running} className="alt-button--block">
               {running ? "Looking up your restaurant…" : "Look up my restaurant"}
@@ -207,11 +296,19 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
           {error && (
             <div role="alert" className="alt-notice alt-notice--problem">
               <WarningCircle {...icon} />
-              <div className="flex flex-col gap-2">
-                <span>{error}</span>
-                <button type="button" className="alt-link self-start text-left" onClick={() => applyProfile(SAMPLE_PROFILE, true)}>
-                  Try with a sample restaurant instead
-                </button>
+              <div className="flex flex-col items-start gap-3">
+                <div className="flex flex-col gap-1">
+                  <span>We couldn&apos;t find that restaurant</span>
+                  <span className="font-normal">{error}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="secondary" onClick={openManual} aria-controls="manual-details">
+                    Enter my details myself
+                  </Button>
+                  <Button variant="quiet" onClick={() => applyProfile(SAMPLE_PROFILE, "sample")}>
+                    Try with a sample restaurant
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -224,9 +321,17 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
   if ((stage === "review" || stage === "suggesting") && profile) {
     const busy = stage === "suggesting";
     return (
-      <Layout step={2} back={back} title="Check your details" lead="Here's what we found. Check it and fix anything that's wrong.">
+      <Layout
+        step={2}
+        back={back}
+        title="Check your details"
+        lead={source === "manual" ? "Here's what you entered. Fix anything that's wrong." : "Here's what we found. Check it and fix anything that's wrong."}
+      >
         <form onSubmit={confirm} className="flex flex-col gap-5">
-          {isSample && (
+          <span className={`alt-chip ${source === "live" ? "alt-chip--info" : ""} self-start`}>
+            {source === "live" ? "From Google and the web" : source === "sample" ? "Sample restaurant" : "Added by you"}
+          </span>
+          {source === "sample" && (
             <p className="alt-notice alt-notice--info">
               <Info {...icon} />
               This is a sample restaurant so you can see how setup works. Change the name and location to your own.
@@ -251,7 +356,7 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
             </p>
           )}
           <Button type="submit" disabled={busy || !name.trim() || !location.trim()} className="alt-button--block">
-            {busy ? "Finding good spots to post…" : "Looks right, continue"}
+            {busy ? "Finding good dates…" : "Looks right"}
           </Button>
           {!busy && (
             <button type="button" className="alt-link self-center" onClick={() => setStage("link")}>
@@ -299,7 +404,7 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
           </p>
         )}
 
-        <ButtonLink href="/restaurant?registered=1" variant={published > 0 ? "primary" : "secondary"} className="alt-button--block">
+        <ButtonLink href={returning ? "/restaurant" : "/restaurant?registered=1"} variant={published > 0 ? "primary" : "secondary"} className="alt-button--block">
           {published > 0 ? `Go to my dashboard (${published} published)` : "Go to my dashboard"}
         </ButtonLink>
       </div>
@@ -308,6 +413,46 @@ export function MapsSetup({ manual }: { manual?: ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
+
+function TextInput({ id, label, value, onChange, error, help, placeholder, inputRef }: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
+  help?: string;
+  placeholder?: string;
+  inputRef?: Ref<HTMLInputElement>;
+}) {
+  const describedBy = [help && `${id}-help`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
+  return (
+    <div className="alt-field">
+      <label htmlFor={id} className="alt-label">
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        id={id}
+        className="alt-input"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy}
+      />
+      {help && (
+        <p id={`${id}-help`} className="alt-help">
+          {help}
+        </p>
+      )}
+      {error && (
+        <p id={`${id}-error`} role="alert" className="alt-error">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function ProfileDetails({ profile }: { profile: RestaurantProfile }) {
   const facts = [

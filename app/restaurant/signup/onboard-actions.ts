@@ -23,12 +23,13 @@ type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 /**
  * Register (or sign back in to) the restaurant the owner confirmed. `pin` comes from their
  * Google Maps link; without one, the location is geocoded after the response is sent.
+ * `returning` is true when it already has spaces, so the UI can offer a way straight to the dashboard.
  */
 export async function registerFromProfile(
   name: string,
   location: string,
   pin?: { lat: number; lng: number } | null,
-): Promise<Result> {
+): Promise<Result<{ returning: boolean }>> {
   name = String(name ?? "").trim();
   location = String(location ?? "").trim();
   if (!name || !location) return { ok: false, error: "Enter your restaurant's name and location." };
@@ -36,7 +37,8 @@ export async function registerFromProfile(
     const restaurant = await registerRestaurant(name.slice(0, 120), location.slice(0, 160));
     await setCurrentRestaurant(restaurant.id);
     after(() => pinRestaurant(restaurant.id, restaurant.name, restaurant.location, isValidLatLng(pin) ? pin : null));
-    return { ok: true };
+    const returning = (await listSpaces(restaurant.id)).length > 0;
+    return { ok: true, returning };
   } catch (err) {
     console.error("registerFromProfile failed", err);
     return { ok: false, error: "We couldn't register your restaurant. Please try again." };
