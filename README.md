@@ -16,7 +16,8 @@ Live app: **https://alongtable.vercel.app** (every push to `main` deploys automa
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (ask the team)
+cp .env.example .env.local   # then fill in SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (ask the team),
+                             # plus ANTHROPIC_API_KEY for the AI workflows
 npm run dev
 ```
 
@@ -25,6 +26,66 @@ Database scripts (run in the Supabase SQL Editor):
 - `supabase/seed.sql`: add three restaurants plus sample spaces, events and reservations (Il Nido is left empty for the live demo). Safe to re-run.
 - `supabase/reset.sql`: wipe spaces, events and reservations before a demo run. Keeps restaurants. Run `seed.sql` afterwards to restore the sample data.
 - `supabase/drop.sql`, then `schema.sql`, then `seed.sql`: rebuild from scratch after a schema change. Deletes all data.
+
+---
+
+## AI workflows
+
+Two features use Claude (`claude-sonnet-5-5`) through the Anthropic SDK. Both need `ANTHROPIC_API_KEY` in `.env.local` (and on Vercel, where it's already set). Both follow the same rules:
+
+- **The AI never books or publishes anything.** It searches, suggests and drafts; a person reviews and clicks.
+- **Code checks the AI's output** before anyone sees it (only real spaces, only valid options, nothing outside opening hours).
+- **Progress streams to the page** as newline-delimited JSON, so you can watch each step.
+- **A labelled sample result** appears if the live call fails, so the demo still works offline.
+
+### 1. Event planner (for organizers)
+
+**Where:** Host an event → **Plan with AI** tab (`/spaces?tab=plan`).
+
+An organizer describes the gathering in plain language, e.g. *"Philosophy meetup for about 8 people, Wednesday evening, somewhere quiet, under $30 each."*
+
+1. Claude calls a `search_spaces` tool (date range, minimum seats, max price per person, time of day) that filters `listAvailableSpaces()`. It searches again with looser filters if nothing matches.
+2. Claude calls `submit_plan` with up to 3 spaces (best first, each with a one-line reason) and a drafted title, description and number of spots.
+3. Each recommendation links to `/spaces/[id]/create-event?title=…&description=…&capacity=…`, which opens the normal create-event form prefilled. Publishing still goes through `createEventForSpace()`.
+
+Guardrails: recommendations are dropped unless the space came back from a search; spots are capped at each space's capacity; if nothing fits (e.g. 30 people when the largest space seats 16), it recommends nothing and explains why.
+
+| File | Purpose |
+|---|---|
+| `lib/planner.ts` | Tool definitions, the tool-use loop, plan validation |
+| `app/api/plan/route.ts` | `POST { request }` → streamed steps, then `{ type: "plan" }` |
+| `app/spaces/planner.tsx`, `app/spaces/sample-plan.ts` | The tab UI and the offline sample |
+| `app/spaces/[id]/create-event/page.tsx` | Reads `title`, `description`, `capacity` from the URL as starting values |
+
+Typical run: 5–13 seconds. Estimated cost: a few cents (2–3 Claude calls of a few thousand tokens each; not measured).
+
+### 2. Restaurant setup from Google Maps (for owners)
+
+**Where:** `/restaurant/signup` → **Your Google Maps link**.
+
+1. **Read the link.** Share links (`maps.app.goo.gl/…`) are expanded by following redirects on Google Maps hosts only. The place name and pin come from the URL itself; Maps page content is never fetched (`google.com` is blocked for web fetch).
+2. **Research the restaurant.** Claude uses Anthropic's server-side **web search** and **web fetch** (the restaurant's own site first) and returns a profile through a `submit_profile` tool: neighborhood, address, cuisine, price range, opening hours, seating areas, sources, and what it couldn't confirm.
+3. **Owner reviews.** Name and location are editable; the other details are shown with their sources. Confirming registers the restaurant (or signs it back in).
+4. **Suggest spots.** A second call suggests 3–5 spots for the next two weeks using only the publish form's options (`AREAS`, `SLOTS`, `CAPACITIES`, `PRICES`, `FEATURES`). Code drops any that fall outside opening hours, in the past, or duplicate a space the restaurant already has. If hours weren't found, the suggestions are labelled as estimates.
+5. **Owner decides** per card: **Publish** (creates the space), **Edit first** (opens `/restaurant/new` with the tiles preselected), or **Skip**.
+
+Only name and location are saved; cuisine, hours and the rest are used for suggestions and not stored, so the data model is unchanged. Google's busy-hours ("Popular times") data isn't available, so "quiet" times are based on opening hours and typical restaurant patterns, and the copy says so.
+
+| File | Purpose |
+|---|---|
+| `lib/onboarding.ts` | Link parsing, web research loop, spot suggestions and validation |
+| `app/api/onboard/route.ts` | `POST { link }` → streamed steps, then `{ type: "profile" }` |
+| `app/restaurant/signup/onboard-actions.ts` | Server actions: register, get suggestions, publish a suggestion |
+| `app/restaurant/signup/maps-setup.tsx`, `sample-profile.ts` | The setup UI and the offline sample restaurant |
+| `app/restaurant/new/page.tsx` | Reads `area`, `date`, `slot`, `capacity`, `price`, `features` from the URL |
+
+Typical run: about 25–35 seconds for research plus 5–10 for suggestions. Estimated cost: roughly 5–15 cents per sign-up, mostly from the web pages Claude reads (not measured).
+
+### Trying them locally
+
+- Planner: open `/spaces?tab=plan` and click an example prompt. It needs available spaces, so run `supabase/seed.sql` first.
+- Setup: paste a Google Maps link for a real Seattle restaurant, e.g. `https://www.google.com/maps/place/The+Pink+Door/@47.6103,-122.3425,17z`. Registering creates a real restaurant row, so use a test name (e.g. prefix `ZZ Test`) and delete it afterwards.
+- To see the fallbacks, paste a non-Maps link (setup) or stop the dev server mid-request (planner), then choose the sample.
 
 ---
 
@@ -117,19 +178,9 @@ The landing page (`/`) is the first thing judges see. It should explain the prod
 - [ ] 9. All data persists after a page refresh.
 - [ ] Extra safety checks: a duplicate email is rejected, a full event blocks joining, and two people booking the same space at once leaves only one event.
 
-### Phase 8: AI workflow (hackathon requirement, after V0 passes)
+### Phase 8: AI workflows ✅
 
-AI is not in the V0 PRD scope (§7), but the hackathon requires it. Add it only after Phase 7 passes, and build it on top of the same booking functions:
-
-- [ ] **AI event planner** (`/plan`): the user describes the event in plain language ("philosophy meetup for 8, Wednesday evening, under $30"). Claude, using tool calling:
-  1. Turns the description into filters.
-  2. Searches the available spaces.
-  3. Ranks the matches and explains each choice.
-  4. Pre-fills the Create Event form.
-
-  The user still confirms, and the booking goes through `create_event_for_space`. The AI never books anything directly.
-- [ ] Show each step in the UI as it runs (searching → found N spaces → drafting event).
-- [ ] A demo mode that returns a saved response in case the network or API fails on stage.
+Done. Two workflows are live: the **event planner** for organizers and **restaurant setup from Google Maps** for owners. See [AI workflows](#ai-workflows) for how they work.
 
 ---
 
