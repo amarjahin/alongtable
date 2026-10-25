@@ -35,7 +35,7 @@ function columnPath(x: number, y: number, w: number, h: number, r: number) {
 }
 
 /** Round a tick spacing up to 1, 2, 5 or 10 times a power of ten, so the axis shows round numbers. */
-function niceStep(raw: number) {
+export function niceStep(raw: number) {
   if (raw <= 1) return 1;
   const pow = 10 ** Math.floor(Math.log10(raw));
   const f = raw / pow;
