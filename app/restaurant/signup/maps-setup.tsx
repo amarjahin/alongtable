@@ -93,7 +93,8 @@ export function MapsSetup() {
     if (!profile) return;
     setError(null);
     setStage("suggesting");
-    const reg = await registerFromProfile(name, location);
+    const pin = profile.lat != null && profile.lng != null ? { lat: profile.lat, lng: profile.lng } : null;
+    const reg = await registerFromProfile(name, location, pin);
     if (!reg.ok) {
       setError(reg.error);
       setStage("review");

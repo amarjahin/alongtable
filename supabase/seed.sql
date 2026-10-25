@@ -16,6 +16,12 @@ values
   ('Saffron Table',  'Capitol Hill, Seattle, WA')
 on conflict ((lower(trim(name))), (lower(trim(location)))) do nothing;
 
+-- Map pins (needs supabase/add-coordinates.sql on an existing database). Harbor & Pine
+-- and Saffron Table are sample restaurants, pinned on a street in their neighborhood.
+update restaurants set lat = 47.5784969, lng = -122.4111083 where lower(name) = 'il nido'       and lat is null;
+update restaurants set lat = 47.6672,    lng = -122.3847    where lower(name) = 'harbor & pine' and lat is null;
+update restaurants set lat = 47.6145,    lng = -122.3197    where lower(name) = 'saffron table' and lat is null;
+
 do $$
 declare
   v_harbor   uuid;

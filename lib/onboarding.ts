@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { AREAS, CAPACITIES, FEATURES, PRICES, SLOTS } from "@/lib/space-options";
+import { isValidLatLng } from "@/lib/geocode";
 import { upcomingDays } from "@/lib/time";
 
 // AI restaurant onboarding. A restaurant pastes its Google Maps link; we read
@@ -109,6 +110,8 @@ export type RestaurantProfile = {
   sources: { title: string; url: string }[];
   confidence: "high" | "medium" | "low";
   missing: string[]; // fields we couldn't confirm
+  lat: number | null; // map pin from the Google Maps link, if it had one
+  lng: number | null;
 };
 
 export type OnboardingStep = { type: "step"; message: string };
@@ -251,7 +254,7 @@ export async function researchRestaurant(
     );
     if (submit) {
       onStep({ type: "step", message: "Putting your profile together" });
-      return toProfile(submit.input as SubmitProfileInput);
+      return { ...toProfile(submit.input as SubmitProfileInput), lat: place.lat, lng: place.lng };
     }
 
     if (nudged) throw new OnboardingError("We couldn't put a profile together. Please try again.");
@@ -261,7 +264,7 @@ export async function researchRestaurant(
   throw new OnboardingError("The research took too many steps. Please try again.");
 }
 
-function toProfile(input: SubmitProfileInput): RestaurantProfile {
+function toProfile(input: SubmitProfileInput): Omit<RestaurantProfile, "lat" | "lng"> {
   const clean = (s: string | null) => s?.trim() || null;
   return {
     name: input.name.trim(),
@@ -457,5 +460,6 @@ export function profileFromClient(input: unknown): RestaurantProfile | null {
     sources: [],
     confidence: (["high", "medium", "low"] as const).find((x) => x === p.confidence) ?? "low",
     missing: [],
+    ...(isValidLatLng({ lat: p.lat, lng: p.lng }) ? { lat: p.lat as number, lng: p.lng as number } : { lat: null, lng: null }),
   };
 }

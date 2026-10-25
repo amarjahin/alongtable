@@ -26,6 +26,7 @@ Database scripts (run in the Supabase SQL Editor):
 - `supabase/seed.sql`: add three restaurants plus sample spaces, events and reservations (Il Nido is left empty for the live demo). Safe to re-run.
 - `supabase/reset.sql`: wipe spaces, events and reservations before a demo run. Keeps restaurants. Run `seed.sql` afterwards to restore the sample data.
 - `supabase/drop.sql`, then `schema.sql`, then `seed.sql`: rebuild from scratch after a schema change. Deletes all data.
+- Migrations for an existing database, in this order: `supabase/add-photos.sql` (restaurant and event photos), then `supabase/add-coordinates.sql` (map pins on `/events`). Both are safe to re-run and keep your data; a fresh `schema.sql` already includes them.
 
 ---
 

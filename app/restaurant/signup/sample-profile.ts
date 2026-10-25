@@ -22,4 +22,6 @@ export const SAMPLE_PROFILE: RestaurantProfile = {
   sources: [],
   confidence: "high",
   missing: [],
+  lat: 47.6513, // Fremont (sample)
+  lng: -122.3501,
 };

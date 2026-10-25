@@ -23,9 +23,13 @@ UUID primary keys. Foreign keys use `on delete cascade`.
 | `name` | `text` not null |
 | `location` | `text` not null |
 | `photo_url` | `text`, nullable. Public URL of the restaurant's photo in the `restaurant-photos` storage bucket |
+| `lat` | `double precision`, nullable. Map pin latitude |
+| `lng` | `double precision`, nullable. Map pin longitude |
 | `created_at` | `timestamptz` not null, `default now()` |
 
-Unique index on `(lower(trim(name)), lower(trim(location)))`.
+Unique index on `(lower(trim(name)), lower(trim(location)))`. `lat` and `lng` are both null or both set, within valid ranges.
+
+Coordinates put the restaurant on the `/events` map. Sign-up from a Google Maps link uses the link's pin; manual sign-up geocodes the location with OpenStreetMap Nominatim. A restaurant without coordinates is simply missing from the map, never from the list. Migration for an existing database: `supabase/add-coordinates.sql` (after `add-photos.sql`).
 
 Photos for restaurants and events live in one public Storage bucket, `photos`, created by `schema.sql` (5 MB limit, JPEG, PNG or WebP), in folders `restaurants/<id>/` and `events/<id>/`. The server uploads with the service role key and saves the URL on the row.
 
@@ -104,7 +108,7 @@ The function does not insert a reservation for the organizer.
 
 ### `events_with_availability`
 
-Event fields, space time, label, and price info, restaurant name, location and photo (`restaurant_photo_url`), the event's own photo (`event_photo_url`), and:
+Event fields, space time, label, and price info, restaurant name, location and photo (`restaurant_photo_url`), the event's own photo (`event_photo_url`), the restaurant's map pin (`restaurant_lat`, `restaurant_lng`, nullable), and:
 
 ```text
 seats_left = events.capacity - count(reservations)

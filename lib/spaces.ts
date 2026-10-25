@@ -212,7 +212,14 @@ function escapeLike(s: string): string {
 
 export type Restaurant = { id: string; name: string; location: string; photoUrl: string | null };
 
-type RestaurantRow = { id: string; name: string; location: string; photo_url?: string | null };
+type RestaurantRow = {
+  id: string;
+  name: string;
+  location: string;
+  photo_url?: string | null;
+  lat?: number | null; // absent until supabase/add-coordinates.sql has run
+  lng?: number | null;
+};
 
 export async function getRestaurant(id: string): Promise<Restaurant | null> {
   if (!isUuid(id)) return null;
@@ -231,6 +238,34 @@ export async function getRestaurant(id: string): Promise<Restaurant | null> {
 export async function setRestaurantPhoto(id: string, photoUrl: string): Promise<void> {
   const { error } = await supabase().from("restaurants").update({ photo_url: photoUrl }).eq("id", id);
   if (error) throw new Error(`setRestaurantPhoto: ${error.message}`);
+}
+
+/**
+ * Set the restaurant's map pin. With `onlyIfMissing`, an existing pin is kept (used for
+ * geocoded guesses, which shouldn't overwrite a pin from a Google Maps link).
+ * Fails until supabase/add-coordinates.sql has been run.
+ */
+export async function setRestaurantCoordinates(
+  id: string,
+  pin: { lat: number; lng: number },
+  { onlyIfMissing = false } = {},
+): Promise<void> {
+  let query = supabase().from("restaurants").update({ lat: pin.lat, lng: pin.lng }).eq("id", id);
+  if (onlyIfMissing) query = query.is("lat", null);
+  const { error } = await query;
+  if (error) throw new Error(`setRestaurantCoordinates: ${error.message}`);
+}
+
+/** True if the restaurant has no map pin yet (or the columns don't exist yet). */
+export async function restaurantNeedsCoordinates(id: string): Promise<boolean> {
+  const { data, error } = await supabase()
+    .from("restaurants")
+    .select("*")
+    .eq("id", id)
+    .returns<RestaurantRow[]>()
+    .maybeSingle();
+  if (error || !data || !("lat" in data)) return false; // columns missing: nothing to do
+  return data.lat == null;
 }
 
 /** Find the restaurant with this name and location, or create it. */

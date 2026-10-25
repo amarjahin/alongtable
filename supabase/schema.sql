@@ -14,7 +14,10 @@ create table restaurants (
   name        text not null,
   location    text not null,
   photo_url   text,
-  created_at  timestamptz not null default now()
+  lat         double precision,
+  lng         double precision,
+  created_at  timestamptz not null default now(),
+  check ((lat is null and lng is null) or (lat is not null and lng is not null and lat between -90 and 90 and lng between -180 and 180))
 );
 
 create unique index restaurants_name_location_key
@@ -103,7 +106,9 @@ select
   r.location  as restaurant_location,
   (e.capacity - (select count(*) from reservations x where x.event_id = e.id))::int as seats_left,
   r.photo_url as restaurant_photo_url,
-  e.photo_url as event_photo_url
+  e.photo_url as event_photo_url,
+  r.lat       as restaurant_lat,
+  r.lng       as restaurant_lng
 from events e
 join spaces s      on s.id = e.space_id
 join restaurants r on r.id = s.restaurant_id;

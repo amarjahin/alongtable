@@ -22,6 +22,9 @@ export type Event = {
   photoUrl?: string | null;
   /** The restaurant's photo: the fallback when the event has none. */
   restaurantPhotoUrl?: string | null;
+  /** The restaurant's map pin; null when it has none (or before add-coordinates.sql). */
+  lat: number | null;
+  lng: number | null;
   label: string;
   startsAt: string; // ISO, UTC
   endsAt: string; // ISO, UTC
@@ -126,6 +129,9 @@ type EventRow = {
   /** Both absent until supabase/add-photos.sql has been run. */
   restaurant_photo_url?: string | null;
   event_photo_url?: string | null;
+  /** Both absent until supabase/add-coordinates.sql has been run. */
+  restaurant_lat?: number | null;
+  restaurant_lng?: number | null;
   label: string;
   starts_at: string;
   ends_at: string;
@@ -146,6 +152,8 @@ function toEvent(r: EventRow): Event {
     location: r.restaurant_location,
     photoUrl: r.event_photo_url ?? null,
     restaurantPhotoUrl: r.restaurant_photo_url ?? null,
+    lat: r.restaurant_lat ?? null,
+    lng: r.restaurant_lng ?? null,
     label: r.label,
     startsAt: r.starts_at,
     endsAt: r.ends_at,

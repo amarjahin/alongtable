@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { isValidLatLng } from "@/lib/geocode";
+import { pinRestaurant } from "@/lib/restaurant-pins";
 import {
   OnboardingError,
   profileFromClient,
@@ -17,14 +20,22 @@ import { seattleDateKey, seattleToUtc, upcomingDays } from "@/lib/time";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
-/** Register (or sign back in to) the restaurant the owner confirmed. */
-export async function registerFromProfile(name: string, location: string): Promise<Result> {
+/**
+ * Register (or sign back in to) the restaurant the owner confirmed. `pin` comes from their
+ * Google Maps link; without one, the location is geocoded after the response is sent.
+ */
+export async function registerFromProfile(
+  name: string,
+  location: string,
+  pin?: { lat: number; lng: number } | null,
+): Promise<Result> {
   name = String(name ?? "").trim();
   location = String(location ?? "").trim();
   if (!name || !location) return { ok: false, error: "Enter your restaurant's name and location." };
   try {
     const restaurant = await registerRestaurant(name.slice(0, 120), location.slice(0, 160));
     await setCurrentRestaurant(restaurant.id);
+    after(() => pinRestaurant(restaurant.id, restaurant.name, restaurant.location, isValidLatLng(pin) ? pin : null));
     return { ok: true };
   } catch (err) {
     console.error("registerFromProfile failed", err);
@@ -96,3 +107,4 @@ export async function publishSuggestion(s: SpotSuggestion): Promise<Result> {
   revalidatePath("/restaurant");
   return { ok: true };
 }
+

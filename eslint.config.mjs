@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Vendored brand assets (static demo page + vanilla JS); not part of the app.
     "brand/**",
+    // MapLibre's web worker, copied from node_modules by scripts/copy-maplibre-worker.mjs.
+    "public/maplibre-gl-worker.mjs",
   ]),
 ]);
 

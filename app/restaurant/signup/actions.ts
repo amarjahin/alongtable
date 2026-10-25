@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { clearCurrentRestaurant, setCurrentRestaurant } from "@/lib/session";
 import { registerRestaurant } from "@/lib/spaces";
 import type { FormState } from "../actions";
+import { pinRestaurant } from "@/lib/restaurant-pins";
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
@@ -23,6 +25,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     return { errors: { form: "We couldn't register your restaurant. Please try again." }, values };
   }
   await setCurrentRestaurant(restaurant.id);
+  after(() => pinRestaurant(restaurant.id, restaurant.name, restaurant.location, null)); // map pin, after the response
   redirect("/restaurant?registered=1");
 }
 
