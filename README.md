@@ -19,11 +19,13 @@ npm install
 cp .env.example .env.local   # then fill in SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (ask the team),
                              # plus ANTHROPIC_API_KEY for the AI workflows
 npm run dev
+npm test                     # unit tests for lib/ (node --test, no extra dependencies)
 ```
 
 Database scripts (run in the Supabase SQL Editor):
 
 - `supabase/seed.sql`: add three restaurants plus sample spaces, events and reservations (Il Nido is left empty for the live demo). Safe to re-run.
+- `supabase/seed-history.sql` (optional): give Harbor & Pine 8 weeks of past Tuesday and Thursday dinners with reservations, so `/restaurant/insights` shows real numbers instead of the sample. Run after `seed.sql`. Safe to re-run.
 - `supabase/reset.sql`: wipe spaces, events and reservations before a demo run. Keeps restaurants. Run `seed.sql` afterwards to restore the sample data.
 - `supabase/drop.sql`, then `schema.sql`, then `seed.sql`: rebuild from scratch after a schema change. Deletes all data.
 - Migrations for an existing database, in this order: `supabase/add-photos.sql` (restaurant and event photos), then `supabase/add-coordinates.sql` (map pins on `/events`). Both are safe to re-run and keep your data; a fresh `schema.sql` already includes them.
@@ -38,6 +40,7 @@ Two features use Claude (`claude-sonnet-5-5`) through the Anthropic SDK. Both ne
 - **Code checks the AI's output** before anyone sees it (only real spaces, only valid options, nothing outside opening hours).
 - **Progress streams to the page** as newline-delimited JSON, so you can watch each step.
 - **A labelled sample result** appears if the live call fails, so the demo still works offline.
+- **AI-made content is tagged "ALong AI"** (`components/ui/ai-tag.tsx`) with a note on what the person still decides, so it's clear where the human is in the loop. Numbers worked out by code, like insights, are not tagged.
 
 ### 1. Event planner (for organizers)
 
@@ -62,13 +65,15 @@ Typical run: 5–13 seconds. Estimated cost: a few cents (2–3 Claude calls of 
 
 ### 2. Restaurant setup from Google Maps (for owners)
 
-**Where:** `/restaurant/signup` → **Your Google Maps link**.
+**Where:** `/restaurant/signup` → **Your Google Maps link**. The page shows four steps: Find your restaurant, Check details, Pick dates, Live.
 
 1. **Read the link.** Share links (`maps.app.goo.gl/…`) are expanded by following redirects on Google Maps hosts only. The place name and pin come from the URL itself; Maps page content is never fetched (`google.com` is blocked for web fetch).
 2. **Research the restaurant.** Claude uses Anthropic's server-side **web search** and **web fetch** (the restaurant's own site first) and returns a profile through a `submit_profile` tool: neighborhood, address, cuisine, price range, opening hours, seating areas, sources, and what it couldn't confirm.
 3. **Owner reviews.** Name and location are editable; the other details are shown with their sources. Confirming registers the restaurant (or signs it back in).
 4. **Suggest spots.** A second call suggests 3–5 spots for the next two weeks using only the publish form's options (`AREAS`, `SLOTS`, `CAPACITIES`, `PRICES`, `FEATURES`). Code drops any that fall outside opening hours, in the past, or duplicate a space the restaurant already has. If hours weren't found, the suggestions are labelled as estimates.
-5. **Owner decides** per card: **Publish** (creates the space), **Edit first** (opens `/restaurant/new` with the tiles preselected), or **Skip**.
+5. **Owner picks dates.** Suggestions appear as a list with a switch per date (the first two start on), an **Edit first** link (opens `/restaurant/new` with the tiles preselected), and one **Publish N spaces** button. Dates publish one at a time, so a failure stays on its row and **Try again** retries only what didn't go live. When all succeed, the **Live** screen confirms them.
+
+If the lookup fails, the owner can **Enter my details myself** (name and location; suggestions are then labelled as estimates) or **Try with a sample restaurant**. Both continue to Pick dates.
 
 Only name and location are saved; cuisine, hours and the rest are used for suggestions and not stored, so the data model is unchanged. Google's busy-hours ("Popular times") data isn't available, so "quiet" times are based on opening hours and typical restaurant patterns, and the copy says so.
 
@@ -96,7 +101,7 @@ V0 is **one web app with two interfaces** that demonstrates the complete booking
 
 | UI | Who | Screens |
 |---|---|---|
-| Restaurant Owner (`/restaurant`) | Restaurant owners | Publish space, View spaces + booking status |
+| Restaurant Owner (`/restaurant`) | Restaurant owners | Sign up, Publish space, View spaces + booking status, Insights preview |
 | Landing (`/`) | Everyone | Landing page |
 | Regular User (`/events`, `/spaces`) | Anyone | Discover events, Event details, Join event, Booking confirmation, Browse spaces, Space details, Create event, Event created confirmation |
 
@@ -119,6 +124,8 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
   - Publish a space (`/restaurant/new`) with tile choices for area, day, time slot, seats, features and minimum spend.
   - Dashboard (`/restaurant`): only that restaurant's spaces, stat tiles, a guests chart, a calendar, a booked/open filter, and cancelling events or deleting spaces with confirmation.
   - Photos for restaurants and events (Supabase Storage).
+  - Owner flow ([spec](docs/specs/restaurant-owner-flow.md)): a welcome hero on `/restaurant` when signed out; step-by-step signup with Pick dates and a Live screen; a **Your next move** card (`lib/next-move.ts`, unit-tested) and open-space days on the calendar.
+  - Insights preview (`/restaurant/insights`, linked from the dashboard as **See insights**): fill rate, estimated sales, returning guests, a weekly chart with a simple 4-week forecast, and weekday patterns, all worked out from the restaurant's past events (`lib/insights.ts`, no AI). It shows clearly labelled **sample data until the restaurant has hosted 8 events** across 4 weeks; run `supabase/seed-history.sql` to demo real numbers.
   - Dev only: "Demo: simulate booking" and "Demo: a guest joins" buttons under `npm run dev` write real rows; run `supabase/reset.sql` to clear them.
 - **Phase 3, creating events:** browse spaces, space details, create event, event created (see checklist below).
 - **Phase 4, joining events:** discover events, event details, join, booking confirmation (see checklist below).
