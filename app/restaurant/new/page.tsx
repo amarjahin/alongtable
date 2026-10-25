@@ -3,22 +3,42 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getCurrentRestaurant } from "@/lib/session";
+import { AREAS, CAPACITIES, FEATURES, PRICES, SLOTS } from "@/lib/space-options";
 import { upcomingDays } from "@/lib/time";
-import { PublishForm } from "./publish-form";
+import { PublishForm, type SpaceDraft } from "./publish-form";
 
 export const metadata: Metadata = { title: "Publish a space · ALongTable" };
 
-export default function NewSpacePage() {
+export default function NewSpacePage({ searchParams }: PageProps<"/restaurant/new">) {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
       <Suspense fallback={<p className="alt-secondary">Loading…</p>}>
-        <Content />
+        {searchParams.then((query) => (
+          <Content query={query} />
+        ))}
       </Suspense>
     </main>
   );
 }
 
-async function Content() {
+type Query = Record<string, string | string[] | undefined>;
+
+/** Preselect tiles from the URL (the AI setup's "Edit first" links). Unknown values are ignored. */
+function draftFromQuery(query: Query, dayValues: string[]): SpaceDraft {
+  const one = (k: string) => (Array.isArray(query[k]) ? query[k][0] : query[k]);
+  const pick = <T extends string>(v: string | undefined, allowed: readonly T[]) => allowed.find((a) => a === v);
+  const all = query.features === undefined ? [] : Array.isArray(query.features) ? query.features : [query.features];
+  return {
+    area: pick(one("area"), AREAS),
+    date: pick(one("date"), dayValues),
+    slot: pick(one("slot"), SLOTS.map((s) => s.value)),
+    capacity: pick(one("capacity"), CAPACITIES.map(String)),
+    price: pick(one("price"), PRICES.map((p) => p.value)),
+    features: all.filter((f) => (FEATURES as readonly string[]).includes(f)),
+  };
+}
+
+async function Content({ query }: { query: Query }) {
   const restaurant = await getCurrentRestaurant();
   if (!restaurant) redirect("/restaurant/signup");
   await connection(); // the day tiles depend on today's date, so render per request
@@ -32,7 +52,7 @@ async function Content() {
         </p>
       </header>
       <div className="alt-card !p-6 sm:!p-8">
-        <PublishForm days={days} />
+        <PublishForm days={days} draft={draftFromQuery(query, days.map((d) => d.value))} />
       </div>
     </div>
   );

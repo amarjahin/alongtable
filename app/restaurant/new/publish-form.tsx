@@ -11,7 +11,17 @@ import { publishSpace, type FormState } from "../actions";
 
 const icon = { size: 20, "aria-hidden": true } as const;
 
-export function PublishForm({ days }: { days: DayOption[] }) {
+/** Starting selections, e.g. from an AI suggestion's "Edit first" link. Values are already validated. */
+export type SpaceDraft = {
+  area?: string;
+  date?: string;
+  slot?: string;
+  capacity?: string;
+  price?: string;
+  features?: string[];
+};
+
+export function PublishForm({ days, draft = {} }: { days: DayOption[]; draft?: SpaceDraft }) {
   const [state, action, pending] = useActionState<FormState, FormData>(publishSpace, {});
 
   return (
@@ -20,7 +30,7 @@ export function PublishForm({ days }: { days: DayOption[] }) {
         name="area"
         label="Where in the restaurant?"
         icon={<Storefront {...icon} />}
-        defaultValue="Main dining"
+        defaultValue={draft.area ?? "Main dining"}
         tiles={AREAS.map((a) => ({ value: a, label: a }))}
       />
       <TileSelect
@@ -28,6 +38,7 @@ export function PublishForm({ days }: { days: DayOption[] }) {
         label="Which day?"
         icon={<CalendarBlank {...icon} />}
         columns="grid-cols-3 sm:grid-cols-5 md:grid-cols-7"
+        defaultValue={draft.date}
         tiles={days.map((d) => ({ value: d.value, label: d.label, hint: d.weekday }))}
       />
       <TileSelect
@@ -35,7 +46,7 @@ export function PublishForm({ days }: { days: DayOption[] }) {
         label="What time?"
         icon={<Clock {...icon} />}
         hint="Seattle time (Pacific)."
-        defaultValue="dinner"
+        defaultValue={draft.slot ?? "dinner"}
         columns="grid-cols-2"
         tiles={SLOTS.map((s) => ({ value: s.value, label: s.label, hint: s.hint }))}
       />
@@ -43,7 +54,7 @@ export function PublishForm({ days }: { days: DayOption[] }) {
         name="capacity"
         label="How many seats?"
         icon={<Chair {...icon} />}
-        defaultValue="6"
+        defaultValue={draft.capacity ?? "6"}
         columns="grid-cols-3 sm:grid-cols-6"
         tiles={CAPACITIES.map((c) => ({ value: String(c), label: c }))}
       />
@@ -51,6 +62,7 @@ export function PublishForm({ days }: { days: DayOption[] }) {
         name="features"
         label="What's it like? (optional)"
         icon={<ChatsCircle {...icon} />}
+        defaultValue={draft.features}
         tiles={FEATURES.map((f) => ({ value: f, label: f }))}
       />
       <TileSelect
@@ -58,7 +70,7 @@ export function PublishForm({ days }: { days: DayOption[] }) {
         label="Minimum spend per person"
         icon={<ForkKnife {...icon} />}
         hint="Shown to people booking the space. No payments are collected yet."
-        defaultValue="none"
+        defaultValue={draft.price ?? "none"}
         columns="grid-cols-2 sm:grid-cols-4"
         tiles={PRICES.map((p) => ({ value: p.value, label: p.label }))}
       />
