@@ -3,7 +3,9 @@
 import { useRef, useState, type FormEvent, type ReactNode, type Ref } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
-import { CheckCircle, Info, MapPin, WarningCircle } from "@phosphor-icons/react/ssr";
+import { useRouter } from "next/navigation";
+import { Switch } from "@base-ui/react/switch";
+import { CheckCircle, CircleNotch, Info, MapPin, WarningCircle } from "@phosphor-icons/react/ssr";
 import { StepBar, Steps, type Step } from "@/components/onboarding/steps";
 import { Button, ButtonLink } from "@/components/ui/button";
 import type { RestaurantProfile, SpotSuggestion } from "@/lib/onboarding";
@@ -13,7 +15,8 @@ import { SAMPLE_PROFILE } from "./sample-profile";
 
 type Stage = "link" | "researching" | "review" | "suggesting" | "suggestions";
 type Source = "live" | "sample" | "manual";
-type CardState = "idle" | "publishing" | "published" | "skipped" | { error: string };
+/** A Pick-dates row after a publish attempt. */
+type RowState = { status: "published" } | { status: "failed"; error: string };
 
 const icon = { size: 24, "aria-hidden": true, className: "alt-icon" } as const;
 
@@ -75,7 +78,13 @@ export function MapsSetup() {
   const [returning, setReturning] = useState(false);
   const [suggestions, setSuggestions] = useState<SpotSuggestion[]>([]);
   const [basis, setBasis] = useState<"hours" | "estimate">("hours");
-  const [cards, setCards] = useState<Record<number, CardState>>({});
+  const [selected, setSelected] = useState<Record<number, boolean>>({});
+  const [rows, setRows] = useState<Record<number, RowState>>({});
+  const [publishing, setPublishing] = useState(false);
+  const [pickError, setPickError] = useState(false);
+  const [shake, setShake] = useState(0);
+  const [failure, setFailure] = useState<{ failed: number; of: number } | null>(null);
+  const router = useRouter();
   const abortRef = useRef<AbortController | null>(null);
 
   // Remember the direction so the next step card slides in from the correct side.
@@ -178,6 +187,11 @@ export function MapsSetup() {
       setSuggestions(res.suggestions);
       setBasis(res.basis);
     }
+    // The first two dates start switched on; the rest are the owner's call.
+    setSelected({ 0: true, 1: true });
+    setRows({});
+    setFailure(null);
+    setPickError(false);
     setStage("suggestions");
   }
 
@@ -196,10 +210,30 @@ export function MapsSetup() {
     await registerAndSuggest(p, n, loc);
   }
 
-  async function publish(i: number) {
-    setCards((c) => ({ ...c, [i]: "publishing" }));
-    const res = await publishSuggestion(suggestions[i]);
-    setCards((c) => ({ ...c, [i]: res.ok ? "published" : { error: res.error } }));
+  /**
+   * Publish every selected date that isn't live yet, one after another so each error
+   * stays with its row. The AI only suggested these; this runs on the owner's tap.
+   */
+  async function publishSelected() {
+    const todo = suggestions.map((_, i) => i).filter((i) => selected[i] && rows[i]?.status !== "published");
+    if (todo.length === 0) {
+      setPickError(true);
+      setShake((k) => k + 1);
+      return;
+    }
+    setPickError(false);
+    setPublishing(true);
+    const next = { ...rows };
+    let failed = 0;
+    for (const i of todo) {
+      const res = await publishSuggestion(suggestions[i]);
+      next[i] = res.ok ? { status: "published" } : { status: "failed", error: res.error };
+      if (!res.ok) failed++;
+      setRows({ ...next });
+    }
+    setPublishing(false);
+    setFailure(failed ? { failed, of: todo.length } : null);
+    if (!failed) router.push("/restaurant?published=1");
   }
 
   // ---- Stage: paste link / researching -----------------------------------
@@ -368,46 +402,99 @@ export function MapsSetup() {
     );
   }
 
-  // ---- Stage: suggestions --------------------------------------------------
-  const published = Object.values(cards).filter((c) => c === "published").length;
+  // ---- Stage: pick dates --------------------------------------------------
+  const count = suggestions.filter((_, i) => selected[i] && rows[i]?.status !== "published").length;
+  const dashboard = returning
+    ? { href: "/restaurant", label: "Go to my dashboard" }
+    : { href: "/restaurant?registered=1", label: "Skip for now" };
   return (
-    <Layout step={3} back={back} title="Which dates could use more guests?">
-      <div className="flex flex-col gap-5">
-        <p className="alt-notice alt-notice--success">
-          <CheckCircle {...icon} />
-          {name} is registered.
-        </p>
-
-        {suggestions.length > 0 ? (
+    <Layout
+      step={3}
+      back={back}
+      title="Which dates could use more guests?"
+      lead={
+        suggestions.length > 0 ? (
           <>
-            <div className="flex flex-col gap-1">
-              <h2 className="alt-title">Spots you could post</h2>
-              <p className="alt-secondary">
-                {basis === "hours"
-                  ? "Picked from your opening hours, at times that are often quieter for restaurants like yours."
-                  : "We couldn't confirm your opening hours, so these times are estimates. Check them before publishing."}{" "}
-                Nothing is posted until you tap Publish.
-              </p>
-            </div>
-            <ul className="flex flex-col gap-3">
-              {suggestions.map((s, i) => (
-                <li key={i}>
-                  <SuggestionCard s={s} state={cards[i] ?? "idle"} onPublish={() => publish(i)} onSkip={() => setCards((c) => ({ ...c, [i]: "skipped" }))} />
-                </li>
-              ))}
-            </ul>
+            {basis === "hours"
+              ? "Picked from your opening hours, at times that are often quieter for restaurants like yours."
+              : "We couldn't confirm your opening hours, so these times are estimates. Check them before publishing."}{" "}
+            Nothing is posted until you tap Publish.
           </>
-        ) : (
+        ) : undefined
+      }
+    >
+      {suggestions.length > 0 ? (
+        <div className="flex flex-col gap-5">
+          <ul key={shake} className={`alt-list rounded-control bg-sunken !px-4 ${shake ? "alt-shake" : ""}`} aria-label="Suggested dates">
+            {suggestions.map((s, i) => (
+              <DateRow
+                key={i}
+                s={s}
+                index={i}
+                checked={!!selected[i]}
+                state={rows[i]}
+                disabled={publishing}
+                onChange={(on) => {
+                  setSelected((x) => ({ ...x, [i]: on }));
+                  if (on) setPickError(false);
+                }}
+              />
+            ))}
+          </ul>
+
+          {pickError && (
+            <p id="pick-error" role="alert" className="alt-error">
+              Pick at least one date to continue.
+            </p>
+          )}
+
+          {failure && !publishing && (
+            <div role="status" className="alt-notice alt-notice--filling">
+              <Info {...icon} />
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold">
+                  We couldn&apos;t publish {failure.failed} of {failure.of} {failure.of === 1 ? "date" : "dates"}
+                </span>
+                <span>Your choices are saved. Check your connection and try again.</span>
+              </div>
+            </div>
+          )}
+
+          <Button
+            onClick={publishSelected}
+            disabled={publishing}
+            className="alt-button--block"
+            aria-describedby={pickError ? "pick-error" : undefined}
+          >
+            {publishing ? (
+              <>
+                <CircleNotch size={20} aria-hidden="true" className="motion-safe:animate-spin" />
+                Publishing…
+              </>
+            ) : failure ? (
+              "Try again"
+            ) : (
+              `Publish ${count} ${count === 1 ? "space" : "spaces"}`
+            )}
+          </Button>
+          <ButtonLink href={dashboard.href} variant="quiet" className="self-center">
+            {dashboard.label}
+          </ButtonLink>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-5">
           <p className="alt-notice alt-notice--info">
             <Info {...icon} />
-            {error ?? "We couldn't find a good spot to suggest right now."} You can publish one yourself.
+            {error ?? "We couldn't find a good date to suggest right now."} You can publish one yourself.
           </p>
-        )}
-
-        <ButtonLink href={returning ? "/restaurant" : "/restaurant?registered=1"} variant={published > 0 ? "primary" : "secondary"} className="alt-button--block">
-          {published > 0 ? `Go to my dashboard (${published} published)` : "Go to my dashboard"}
-        </ButtonLink>
-      </div>
+          <ButtonLink href="/restaurant/new" className="alt-button--block">
+            Publish a space yourself
+          </ButtonLink>
+          <ButtonLink href={dashboard.href} variant="quiet" className="self-center">
+            {dashboard.label}
+          </ButtonLink>
+        </div>
+      )}
     </Layout>
   );
 }
@@ -492,58 +579,59 @@ function ProfileDetails({ profile }: { profile: RestaurantProfile }) {
   );
 }
 
-function SuggestionCard({
-  s,
-  state,
-  onPublish,
-  onSkip,
-}: {
-  s: SpotSuggestion;
-  state: CardState;
-  onPublish: () => void;
-  onSkip: () => void;
-}) {
+/** "Tue, Oct 27 · Dinner 6–9 PM" */
+function whenLabel(s: SpotSuggestion): string {
   const slot = SLOTS.find((x) => x.value === s.slot);
+  return `${formatDay(s.date)} · ${slot?.label} ${slot?.hint.replace(/ – /g, "–")}`;
+}
+
+function DateRow({ s, index, checked, state, disabled, onChange }: {
+  s: SpotSuggestion;
+  index: number;
+  checked: boolean;
+  state?: RowState;
+  disabled: boolean;
+  onChange: (on: boolean) => void;
+}) {
   const price = PRICES.find((p) => p.value === s.price);
   const editParams = new URLSearchParams({ area: s.area, date: s.date, slot: s.slot, capacity: String(s.capacity), price: s.price });
   for (const f of s.features) editParams.append("features", f);
+  const when = whenLabel(s);
+  const published = state?.status === "published";
 
-  if (state === "skipped") return null;
   return (
-    <article className="flex flex-col gap-3 rounded-control bg-sunken p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="alt-row__main">
-          <span className="alt-row__title font-semibold">
-            {formatDay(s.date)} · {slot?.label} {slot?.hint}
-          </span>
-          <span className="alt-secondary">
-            {s.area} · {s.capacity} seats{price?.info ? ` · ${price.label}` : ""}
-            {s.features.length ? ` · ${s.features.join(", ")}` : ""}
-          </span>
+    <li className="alt-row alt-rise !items-start !py-4" style={{ animationDelay: `calc(var(--alt-stagger-row) * ${index})` }}>
+      <div className="alt-row__main flex-1 !gap-1">
+        <span className="alt-row__title">{when}</span>
+        <span>
+          {s.area} · {s.capacity} seats{price?.info ? ` · ${price.label}` : ""}
+          {s.features.length ? ` · ${s.features.join(", ")}` : ""}
+        </span>
+        <div className="flex flex-wrap items-center justify-between gap-x-3">
+          <span className="alt-row__meta">{s.reason}</span>
+          {!published && (
+            <Link href={`/restaurant/new?${editParams}`} className="alt-button alt-button--quiet !px-0">
+              Edit first
+            </Link>
+          )}
         </div>
-        {state === "published" && <span className="alt-chip alt-chip--booked shrink-0">Published</span>}
+        {state?.status === "failed" && (
+          <p className="alt-error flex items-center gap-2">
+            <WarningCircle size={20} aria-hidden="true" />
+            {state.error}
+          </p>
+        )}
       </div>
-      <p>{s.reason}</p>
-      {typeof state === "object" && (
-        <p role="alert" className="alt-notice alt-notice--problem">
-          <WarningCircle {...icon} />
-          {state.error}
-        </p>
+      {published ? (
+        <span className="alt-chip alt-chip--booked shrink-0">Published</span>
+      ) : (
+        <label className="inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center">
+          <Switch.Root className="alt-switch" checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={when}>
+            <Switch.Thumb className="alt-switch__thumb" />
+          </Switch.Root>
+        </label>
       )}
-      {state !== "published" && (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={onPublish} disabled={state === "publishing"}>
-            {state === "publishing" ? "Publishing…" : "Publish"}
-          </Button>
-          <Link href={`/restaurant/new?${editParams}`} className="alt-button alt-button--quiet">
-            Edit first
-          </Link>
-          <Button variant="quiet" onClick={onSkip} disabled={state === "publishing"}>
-            Skip
-          </Button>
-        </div>
-      )}
-    </article>
+    </li>
   );
 }
 
