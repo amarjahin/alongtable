@@ -17,9 +17,11 @@ export type MapItem = {
   location: string;
   lat?: number | null;
   lng?: number | null;
+  /** The restaurant's photo. When set, its pin shows the photo instead of a number. */
+  pinPhotoUrl?: string | null;
 };
 
-type Place = { key: string; name: string; location: string; lat: number; lng: number; count: number; label: string };
+type Place = { key: string; name: string; location: string; lat: number; lng: number; count: number; label: string; photo: string | null };
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const SEATTLE: [number, number] = [-122.335, 47.608];
@@ -29,6 +31,17 @@ const SEATTLE: [number, number] = [-122.335, 47.608];
 // transitioning the wrapper would scale MapLibre's translate too and throw the pin off its spot.
 const pinClass =
   "flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-basil px-2 text-sm font-semibold text-white shadow-md outline-none transition-transform focus-visible:shadow-[var(--alt-focus)] data-[selected=true]:bg-ink data-[hovered=true]:scale-125";
+
+// A pin with the restaurant's photo: a round photo with a white edge, ringed in ink when selected. A count badge
+// only appears when the restaurant has more than one item.
+const photoPinClass =
+  "relative size-11 cursor-pointer rounded-full border-2 border-white bg-sunken bg-cover bg-center shadow-md outline-none transition-transform focus-visible:shadow-[var(--alt-focus)] data-[selected=true]:ring-4 data-[selected=true]:ring-ink data-[hovered=true]:scale-125";
+const badgeClass =
+  "absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-basil px-1 text-sm font-semibold text-white";
+
+// The photo is a CSS background, so it can't use next/image. This asks Next's image optimizer for a small copy
+// (a full-size photo for a 44px pin would be wasteful).
+const pinImageUrl = (url: string) => `/_next/image?url=${encodeURIComponent(url)}&w=96&q=75`;
 
 type Pin = { wrapper: HTMLDivElement; button: HTMLButtonElement };
 
@@ -89,8 +102,20 @@ export function MapExplorer<T extends MapItem>({
           const wrapper = document.createElement("div"); // MapLibre owns this element's transform
           const button = document.createElement("button");
           button.type = "button";
-          button.className = pinClass;
-          button.textContent = String(p.count);
+          if (p.photo) {
+            button.className = photoPinClass;
+            button.style.backgroundImage = `url("${pinImageUrl(p.photo)}")`;
+            if (p.count > 1) {
+              const badge = document.createElement("span");
+              badge.className = badgeClass;
+              badge.textContent = String(p.count);
+              badge.setAttribute("aria-hidden", "true"); // the pin's label already says the count
+              button.appendChild(badge);
+            }
+          } else {
+            button.className = pinClass;
+            button.textContent = String(p.count);
+          }
           button.setAttribute("aria-label", p.label);
           button.addEventListener("click", () => setSelected((s) => (s === p.key ? null : p.key)));
           wrapper.appendChild(button);
@@ -127,7 +152,7 @@ export function MapExplorer<T extends MapItem>({
   const unmapped = events.filter((e) => placeKey(e) === null).length;
 
   return (
-    <div className={`grid gap-4 lg:min-h-[420px] lg:grid-cols-[minmax(0,1fr)_420px] ${desktopHeight}`}>
+    <div className={`grid grid-cols-1 gap-4 lg:min-h-[420px] lg:grid-cols-[minmax(0,1fr)_420px] ${desktopHeight}`}>
       {/* Map: left on wide screens, top on phones */}
       <div className="relative h-[45vh] min-h-[300px] overflow-hidden rounded-card bg-sunken lg:h-full">
         {failed ? (
@@ -208,8 +233,12 @@ function groupByPlace(events: MapItem[]): Omit<Place, "label">[] {
     const key = placeKey(e);
     if (!key) continue;
     const place = byKey.get(key);
-    if (place) place.count++;
-    else byKey.set(key, { key, name: e.restaurantName, location: e.location, lat: e.lat!, lng: e.lng!, count: 1 });
+    if (place) {
+      place.count++;
+      place.photo ??= e.pinPhotoUrl ?? null;
+    } else {
+      byKey.set(key, { key, name: e.restaurantName, location: e.location, lat: e.lat!, lng: e.lng!, count: 1, photo: e.pinPhotoUrl ?? null });
+    }
   }
   return [...byKey.values()];
 }
