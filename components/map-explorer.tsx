@@ -24,10 +24,13 @@ type Place = { key: string; name: string; location: string; lat: number; lng: nu
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const SEATTLE: [number, number] = [-122.335, 47.608];
 
-// Set once; MapLibre adds its own positioning classes to the same element, so state is shown
-// with data attributes rather than by replacing className.
+// Each pin is a plain wrapper that MapLibre positions with an inline transform, holding the
+// visible button. Hover/selection styles (including scale) go on the button only: scaling or
+// transitioning the wrapper would scale MapLibre's translate too and throw the pin off its spot.
 const pinClass =
   "flex h-9 min-w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-basil px-2 text-sm font-semibold text-white shadow-md outline-none transition-transform focus-visible:shadow-[var(--alt-focus)] data-[selected=true]:bg-ink data-[hovered=true]:scale-125";
+
+type Pin = { wrapper: HTMLDivElement; button: HTMLButtonElement };
 
 const placeKey = (e: MapItem) =>
   e.lat != null && e.lng != null ? `${e.restaurantName}|${e.lat.toFixed(5)}|${e.lng.toFixed(5)}` : null;
@@ -58,7 +61,7 @@ export function MapExplorer<T extends MapItem>({
   const [failed, setFailed] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const listTop = useRef<HTMLDivElement>(null);
-  const markers = useRef(new Map<string, HTMLButtonElement>());
+  const markers = useRef(new Map<string, Pin>());
 
   useEffect(() => {
     if (!container.current) return;
@@ -83,14 +86,16 @@ export function MapExplorer<T extends MapItem>({
         m.on("error", (e) => console.warn("map error", e.error));
 
         for (const p of places) {
-          const el = document.createElement("button");
-          el.type = "button";
-          el.className = pinClass;
-          el.textContent = String(p.count);
-          el.setAttribute("aria-label", p.label);
-          el.addEventListener("click", () => setSelected((s) => (s === p.key ? null : p.key)));
-          markers.current.set(p.key, el);
-          added.push(new maplibre.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(m));
+          const wrapper = document.createElement("div"); // MapLibre owns this element's transform
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = pinClass;
+          button.textContent = String(p.count);
+          button.setAttribute("aria-label", p.label);
+          button.addEventListener("click", () => setSelected((s) => (s === p.key ? null : p.key)));
+          wrapper.appendChild(button);
+          markers.current.set(p.key, { wrapper, button });
+          added.push(new maplibre.Marker({ element: wrapper }).setLngLat([p.lng, p.lat]).addTo(m));
         }
 
         if (places.length === 1) {
@@ -187,11 +192,13 @@ export function MapExplorer<T extends MapItem>({
 }
 
 /** Pins are DOM elements owned by MapLibre markers, so they're updated directly. */
-function paintPins(pins: Map<string, HTMLButtonElement>, selected: string | null, hovered: string | null) {
-  for (const [key, el] of pins) {
-    el.dataset.selected = String(key === selected);
-    el.dataset.hovered = String(key === hovered);
-    el.setAttribute("aria-pressed", String(key === selected));
+function paintPins(pins: Map<string, Pin>, selected: string | null, hovered: string | null) {
+  for (const [key, { wrapper, button }] of pins) {
+    button.dataset.selected = String(key === selected);
+    button.dataset.hovered = String(key === hovered);
+    button.setAttribute("aria-pressed", String(key === selected));
+    // Raise the highlighted pin above its neighbours (z-index only; the transform stays MapLibre's).
+    wrapper.style.zIndex = key === hovered ? "3" : key === selected ? "2" : "";
   }
 }
 
