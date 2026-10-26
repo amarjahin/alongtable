@@ -58,11 +58,19 @@ export function TileSelect({
   hint,
   tiles,
   defaultValue,
+  value,
+  onValueChange,
   columns = "grid-cols-2 sm:grid-cols-3",
-}: GroupProps & { defaultValue?: string }) {
+}: GroupProps & { defaultValue?: string; value?: string; onValueChange?: (value: string) => void }) {
   return (
     <Frame name={name} label={label} icon={icon} hint={hint}>
-      <RadioGroup name={name} defaultValue={defaultValue} className={`grid gap-2 ${columns}`}>
+      <RadioGroup
+        name={name}
+        defaultValue={defaultValue}
+        value={value}
+        onValueChange={onValueChange ? (v) => onValueChange(String(v)) : undefined}
+        className={`grid gap-2 ${columns}`}
+      >
         {tiles.map((t) => (
           <Radio.Root key={t.value} value={t.value} className={tile}>
             <span>{t.label}</span>

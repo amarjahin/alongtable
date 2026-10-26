@@ -75,15 +75,19 @@ Typical run: 5–13 seconds. Estimated cost: a few cents (2–3 Claude calls of 
 
 ### 2. Restaurant setup from Google Maps (for owners)
 
-**Where:** `/restaurant/signup` → **Your Google Maps link**. The page shows four steps: Find your restaurant, Check details, Pick dates, Live.
+**Where:** `/restaurant/signup` → **Your Google Maps link**. The page follows the design prototype's steps: Find your restaurant, Confirm details, Pick dates, House rules, Review and publish, then a Live screen.
 
 1. **Read the link.** Share links (`maps.app.goo.gl/…`) are expanded by following redirects on Google Maps hosts only. The place name and pin come from the URL itself; Maps page content is never fetched (`google.com` is blocked for web fetch).
 2. **Research the restaurant.** Claude uses Anthropic's server-side **web search** and **web fetch** (the restaurant's own site first) and returns a profile through a `submit_profile` tool: neighborhood, address, cuisine, price range, opening hours, seating areas, sources, and what it couldn't confirm.
 3. **Owner reviews.** Name and location are editable; the other details are shown with their sources. Confirming registers the restaurant (or signs it back in).
 4. **Suggest spots.** A second call suggests 3–5 spots for the next two weeks using only the publish form's options (`AREAS`, `SLOTS`, `CAPACITIES`, `PRICES`, `FEATURES`). Code drops any that fall outside opening hours, in the past, or duplicate a space the restaurant already has. If hours weren't found, the suggestions are labelled as estimates.
-5. **Owner picks dates.** Suggestions appear as a list with a switch per date (the first two start on), an **Edit first** link (opens `/restaurant/new` with the tiles preselected), and one **Publish N spaces** button. Dates publish one at a time, so a failure stays on its row and **Try again** retries only what didn't go live. When all succeed, the **Live** screen confirms them.
+5. **Owner picks dates.** The next two weeks' open days appear with a switch each; ALong AI's picks carry a **Suggested** chip and the top two start on. One time, seat count, area and minimum spend apply to every chosen date (they default to the AI's top pick).
+6. **House rules** (optional): common rules to tap, or the owner's own, saved to `restaurants.house_rules` and shown on the space and event pages.
+7. **Review and publish.** One summary, one **Publish N spaces** button. Dates publish one at a time, so a failure stays with its date and **Try again** retries only what didn't go live. When all succeed, the **Live** screen confirms them.
 
-If the lookup fails, the owner can **Enter my details myself** (name and location; suggestions are then labelled as estimates) or **Try with a sample restaurant**. Both continue to Pick dates.
+If the lookup fails, the owner can **Enter my details myself** (name and neighborhood; suggestions are then labelled as estimates) or **Try with a sample restaurant**. Both continue through the same steps. If the suggestion call fails, Pick dates still lists the open days so the owner can choose.
+
+House rules need `supabase/add-house-rules.sql` on an existing database; until then sign-up skips saving them.
 
 Only name and location are saved; cuisine, hours and the rest are used for suggestions and not stored, so the data model is unchanged. Google's busy-hours ("Popular times") data isn't available, so "quiet" times are based on opening hours and typical restaurant patterns, and the copy says so.
 
@@ -134,7 +138,7 @@ Why a real database instead of mock JSON: the PRD requires that bookings persist
   - Publish a space (`/restaurant/new`) with tile choices for area, day, time slot, seats, features and minimum spend.
   - Dashboard (`/restaurant`): only that restaurant's spaces, stat tiles, a guests chart, a calendar, a booked/open filter, and cancelling events or deleting spaces with confirmation.
   - Photos for restaurants and events (Supabase Storage).
-  - Owner flow ([spec](docs/specs/restaurant-owner-flow.md)): a welcome hero on `/restaurant` when signed out; step-by-step signup with Pick dates and a Live screen; a **Your next move** card (`lib/next-move.ts`, unit-tested) and open-space days on the calendar.
+  - Owner flow ([spec](docs/specs/restaurant-owner-flow.md)): a welcome hero on `/restaurant` when signed out; step-by-step signup matching the design prototype (find, confirm, pick dates, house rules, review and publish, live); a **Your next move** card (`lib/next-move.ts`, unit-tested) and open-space days on the calendar.
   - Insights preview (`/restaurant/insights`, linked from the dashboard as **See insights**): fill rate, estimated sales, returning guests, a weekly chart with a simple 4-week forecast, and weekday patterns, all worked out from the restaurant's past events (`lib/insights.ts`, no AI). It shows clearly labelled **sample data until the restaurant has hosted 8 events** across 4 weeks; run `supabase/seed-history.sql` to demo real numbers.
   - Dev only: "Demo: simulate booking" and "Demo: a guest joins" buttons under `npm run dev` write real rows; run `supabase/reset.sql` to clear them.
 - **Phase 3, creating events:** browse spaces, space details, create event, event created (see checklist below).

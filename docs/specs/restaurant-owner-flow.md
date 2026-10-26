@@ -4,6 +4,8 @@ Build spec for Claude Code. Put this file at `docs/specs/restaurant-owner-flow.m
 
 Written against `amarjahin/alongtable` at commit `fb8abfa` (Oct 25, 2026). The UI described here comes from the design prototypes ("ALongTable User Flow" and "ALongTable Owner Dashboard" canvases). Where the prototypes and the repo disagree, this spec says which one wins and why.
 
+> **Revision (Oct 26, 2026), decided by the product owner after the first build:** the sign-up flow now follows the prototype's screens instead of §2.1–2.5. Steps are Find your restaurant (Google Maps link, "1 match" card, "This is my restaurant"), Confirm details ("Is this right?" summary with Edit), Pick dates (open days with "Suggested" chips plus shared Time, Seats per date, Where and Minimum spend), **House rules** (now in scope, built as §9 describes), and Review and publish (one Publish button with the §2.4 partial-failure behaviour), then Live. Back links sit left of the primary button. Still left out: the prototype's Account/email step (V0 sends no email) and "Tuesdays look quietest on Google" (no Popular times data). Selected tiles stay ink, not basil, per `brand/DESIGN.md`.
+
 ---
 
 ## 0. Read before you start
