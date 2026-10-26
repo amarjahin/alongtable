@@ -10,6 +10,16 @@ Database contract: [`data-model/README.md`](data-model/README.md)
 
 Live app: **https://alongtable.vercel.app** (every push to `main` deploys automatically)
 
+## Team
+
+- **Lucy** — the idea, the business proposal, the slides, and the pitch.
+- **Dhwani** — design.
+- **Kemet** — guest UI and the APIs behind it: browsing spaces, creating an event, discovering events, and reserving a seat.
+- **Lucas** — restaurant workflow, restaurant UI, the APIs for that side, and keeping the database up to date.
+- **Amar** — deployment pipelines, the initial database, map integration, and AI integration.
+
+Lucy defined the product the build followed. Dhwani's design is what both screens implement. Amar stood up the database and the deploy, Lucas extended that database for the restaurant side, and Kemet and Lucas built the APIs on top of it. The map and the AI sit on those same flows.
+
 ---
 
 ## Getting started
