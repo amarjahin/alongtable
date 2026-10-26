@@ -28,3 +28,16 @@
   --radius-small: var(--alt-radius-small);
   --font-sans: var(--alt-font);
 }
+
+/* Landing motion (components/landing/use-reveal.ts). The script in app/page.tsx adds `motion` to <html> on a hard
+   load, so these items are hidden from the very first paint instead of flashing visible and then fading in. */
+@media (prefers-reduced-motion: no-preference) {
+  html.motion [data-reveal-item]:not([data-revealed]) {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  html.motion [data-seat-row]:not([data-revealed]) .alt-seat[data-state="taken"] {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}

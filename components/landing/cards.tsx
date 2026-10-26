@@ -41,7 +41,13 @@ function Cover({
   if (photoUrl) {
     return (
       <div className="relative aspect-[4/3] overflow-hidden rounded-photo bg-sunken text-white">
-        <Image src={photoUrl} alt={alt} fill sizes="272px" className="object-cover" />
+        <Image
+          src={photoUrl}
+          alt={alt}
+          fill
+          sizes="272px"
+          className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+        />
         <div className="absolute inset-0 bg-ink/55" aria-hidden="true" />
         <div className="absolute inset-0 flex flex-col justify-between p-4">
           <span className="alt-label-text uppercase tracking-wide">{top}</span>
@@ -98,7 +104,7 @@ export function EventTile({ event, i }: { event: Event; i: number }) {
           <span className="tabular-nums">{formatTimeRange(start, end)}</span>
         </p>
       </div>
-      <SeatRow total={event.capacity} taken={event.capacity - event.seatsLeft} />
+      <SeatRow total={event.capacity} taken={event.capacity - event.seatsLeft} animate />
     </Link>
   );
 }

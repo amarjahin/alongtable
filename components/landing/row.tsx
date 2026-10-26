@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, type ReactNode } from "react";
+import { useReveal } from "./use-reveal";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react/ssr";
 
 /**
@@ -25,6 +26,8 @@ export function Row({
   children: ReactNode;
 }) {
   const list = useRef<HTMLUListElement>(null);
+  const section = useRef<HTMLElement>(null);
+  useReveal(section, [children]); // re-runs when the cards change (a filter), animating only the new ones
 
   function scroll(direction: 1 | -1) {
     const el = list.current;
@@ -36,8 +39,8 @@ export function Row({
   const arrow = "alt-button !min-h-11 !w-11 !px-0";
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
+    <section ref={section} className="flex flex-col gap-4">
+      <div data-reveal-item className="flex items-center justify-between gap-4">
         <h2 className="alt-h2 flex items-center gap-3">
           {title}
           <Link href={href} className={arrow} aria-label={linkLabel}>
@@ -53,7 +56,7 @@ export function Row({
           </button>
         </div>
       </div>
-      {toolbar}
+      {toolbar && <div data-reveal-item>{toolbar}</div>}
       <ul
         ref={list}
         className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

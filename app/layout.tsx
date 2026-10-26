@@ -16,8 +16,9 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // suppressHydrationWarning: the landing page's boot script adds a class to <html> before React loads.
   return (
-    <html lang="en" className={`${figtree.variable} h-full`}>
+    <html lang="en" className={`${figtree.variable} h-full`} suppressHydrationWarning>
       <body className="alt-root flex min-h-full flex-col">
         <Header />
         {children}

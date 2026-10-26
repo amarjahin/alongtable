@@ -48,14 +48,14 @@ export function EventsRow({ events, todayKey, weekKeys }: { events: Event[]; tod
   return (
     <Row title="Upcoming events" href="/events" linkLabel="See all events" toolbar={chips}>
       {shown.length === 0 ? (
-        <li className="alt-card alt-secondary w-full">
+        <li data-reveal-item className="alt-card alt-secondary w-full">
           {when === "today"
             ? "No events today. Check this week, or host one yourself."
             : "No events this week yet. Check all upcoming events, or host one yourself."}
         </li>
       ) : (
         shown.map((e, i) => (
-          <li key={e.id}>
+          <li key={e.id} data-reveal-item>
             <EventTile event={e} i={i} />
           </li>
         ))

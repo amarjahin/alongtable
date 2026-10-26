@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Suspense } from "react";
 import { CalendarBlank, CalendarCheck, Clock, MapPin, Storefront, UsersThree } from "@phosphor-icons/react/ssr";
 import { EventsRow } from "@/components/landing/events-row";
+import { Motion } from "@/components/landing/motion";
 import { Row } from "@/components/landing/row";
 import { SpaceTile, cover } from "@/components/landing/cards";
 import { ButtonLink } from "@/components/ui/button";
@@ -17,17 +18,23 @@ export const metadata: Metadata = {
     "Restaurants list empty tables, anyone turns one into an event, and others reserve a seat. Find a gathering near you or host your own.",
 };
 
+// Runs before the first paint of the landing page (it sits in the server HTML), so the animated items are hidden
+// from the start (see globals.css) instead of flashing visible and then fading in. Skipped for reduced motion.
+// If the motion code hasn't taken over after 4 seconds, everything is shown rather than left hidden.
+const MOTION_BOOT = `(function(){var d=document.documentElement;if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;d.classList.add("motion");setTimeout(function(){if(!window.__landingMotion)d.classList.remove("motion")},4000)})()`;
+
 export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-16 px-4 py-10 sm:py-16">
-      <section className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
+      <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT }} />
+      <Motion as="section" className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
         <div className="flex flex-col items-start gap-5">
-          <p className="alt-label-text alt-secondary">Shared tables in Seattle</p>
-          <h1 className="alt-hero">Pull up a chair.</h1>
-          <p className="alt-lead alt-secondary max-w-md">
+          <p data-reveal-item className="alt-label-text alt-secondary">Shared tables in Seattle</p>
+          <h1 data-reveal-item className="alt-hero">Pull up a chair.</h1>
+          <p data-reveal-item className="alt-lead alt-secondary max-w-md">
             Join a shared dinner at a restaurant near you, or open a table at yours.
           </p>
-          <div className="flex flex-wrap gap-3 pt-1">
+          <div data-reveal-item className="flex flex-wrap gap-3 pt-1">
             <ButtonLink href="/events">Find an event</ButtonLink>
             <ButtonLink href="/spaces" variant="secondary">
               Host an event
@@ -37,7 +44,7 @@ export default function Home() {
         <Suspense fallback={<div className="alt-card h-[420px] animate-none bg-sunken" aria-busy="true" />}>
           <NextTable />
         </Suspense>
-      </section>
+      </Motion>
 
       <Suspense fallback={<RowSkeleton />}>
         <Discover />
@@ -74,7 +81,8 @@ async function NextTable() {
   const photoUrl = event.photoUrl ?? event.restaurantPhotoUrl; // the event's own photo, else the restaurant's
 
   return (
-    <div className="alt-card flex flex-col gap-5 !p-4">
+    <Motion>
+      <div data-reveal-item className="alt-card flex flex-col gap-5 !p-4">
       {photoUrl ? (
         <div className="relative aspect-[16/9] overflow-hidden rounded-photo bg-sunken text-white">
           <Image
@@ -120,12 +128,13 @@ async function NextTable() {
         </p>
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4 px-1 pb-1">
-        <SeatRow total={event.capacity} taken={event.capacity - event.seatsLeft} large />
+        <SeatRow total={event.capacity} taken={event.capacity - event.seatsLeft} large animate />
         <ButtonLink href={`/events/${event.id}`} variant="secondary">
           {event.seatsLeft > 0 ? "Pull up a chair" : "See the table"}
         </ButtonLink>
       </div>
-    </div>
+      </div>
+    </Motion>
   );
 }
 
@@ -150,7 +159,7 @@ async function Discover() {
       {spaces.length > 0 && (
         <Row title="Host your own dinner" href="/spaces" linkLabel="See all open spaces">
           {spaces.map((s, i) => (
-            <li key={s.id}>
+            <li key={s.id} data-reveal-item>
               <SpaceTile space={s} i={i} />
             </li>
           ))}
@@ -193,25 +202,28 @@ const steps = [
 
 function HowItWorks() {
   return (
-    <section className="flex flex-col gap-8">
-      <h2 className="alt-h2">How it works</h2>
+    <Motion as="section" className="flex flex-col gap-8">
+      <h2 data-reveal-item className="alt-h2">How it works</h2>
       <ol className="grid gap-8 md:grid-cols-3">
         {steps.map((s) => (
-          <li key={s.title} className="flex flex-col gap-3">
+          <li key={s.title} data-reveal-item className="flex flex-col gap-3">
             <s.icon size={48} weight="duotone" aria-hidden="true" className="alt-icon alt-icon--lg alt-icon--fill-blush" />
             <h3 className="alt-title">{s.title}</h3>
             <p className="alt-secondary">{s.body}</p>
           </li>
         ))}
       </ol>
-    </section>
+    </Motion>
   );
 }
 
 function ForRestaurants() {
   return (
-    <section className="alt-band-deep flex flex-col items-start gap-8 rounded-card p-8 sm:flex-row sm:items-center sm:justify-between sm:p-12">
-      <div className="flex flex-col gap-3">
+    <Motion
+      as="section"
+      className="alt-band-deep flex flex-col items-start gap-8 rounded-card p-8 sm:flex-row sm:items-center sm:justify-between sm:p-12"
+    >
+      <div data-reveal-item className="flex flex-col gap-3">
         <h2 className="alt-h2">Own a restaurant?</h2>
         <p className="alt-lead alt-secondary max-w-md">
           Fill your slow nights with guests who want to be there. Publishing an empty table takes a few taps, and it
@@ -219,10 +231,12 @@ function ForRestaurants() {
         </p>
         <p className="alt-secondary">No payments run through ALongTable yet.</p>
       </div>
-      <ButtonLink href="/restaurant" variant="secondary" className="shrink-0">
-        List your space
-      </ButtonLink>
-    </section>
+      <div data-reveal-item className="shrink-0">
+        <ButtonLink href="/restaurant" variant="secondary">
+          List your space
+        </ButtonLink>
+      </div>
+    </Motion>
   );
 }
 

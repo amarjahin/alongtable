@@ -16,18 +16,21 @@ export function SeatRow({
   large = false,
   pop = false,
   count = true,
+  animate = false,
 }: {
   total: number;
   taken: number;
   large?: boolean;
   pop?: boolean;
   count?: boolean;
+  /** Let the landing page's scroll motion fill the taken seats in (components/landing/use-reveal.ts). */
+  animate?: boolean;
 }) {
   const t = Math.max(0, total);
   const k = Math.min(t, Math.max(0, taken));
 
   return (
-    <div>
+    <div {...(animate ? { "data-seat-row": "" } : {})}>
       {t > 12 ? (
         <div className="alt-seat-bar" role="img" aria-label={`${k} of ${t} seats taken`}>
           <span style={{ width: `${(k / t) * 100}%` }} />
