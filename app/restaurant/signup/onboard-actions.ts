@@ -13,7 +13,8 @@ import {
 } from "@/lib/onboarding";
 import { getCurrentRestaurant, setCurrentRestaurant } from "@/lib/session";
 import { AREAS, CAPACITIES, FEATURES, PRICES, SLOTS } from "@/lib/space-options";
-import { createSpace, listSpaces, registerRestaurant } from "@/lib/spaces";
+import { parseHouseRules } from "@/lib/house-rules";
+import { createSpace, listSpaces, registerRestaurant, setHouseRules } from "@/lib/spaces";
 import { seattleDateKey, seattleHHMM, seattleToUtc, upcomingDays } from "@/lib/time";
 
 // Server actions for the "Set up from Google Maps" flow on /restaurant/signup.
@@ -107,3 +108,15 @@ export async function publishSuggestion(s: SpotSuggestion): Promise<Result> {
   return { ok: true };
 }
 
+/** Save the house rules the owner chose (cleaned and capped here, whatever the client sent). */
+export async function saveHouseRules(rules: unknown): Promise<Result> {
+  const restaurant = await getCurrentRestaurant();
+  if (!restaurant) return { ok: false, error: "Please register your restaurant first." };
+  try {
+    await setHouseRules(restaurant.id, parseHouseRules(Array.isArray(rules) ? rules.map(String).join("\n") : ""));
+  } catch (err) {
+    console.error("saveHouseRules failed", err);
+    return { ok: false, error: "We couldn't save your house rules. You can publish without them." };
+  }
+  return { ok: true };
+}

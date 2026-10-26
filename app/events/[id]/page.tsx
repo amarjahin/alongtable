@@ -4,9 +4,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { HouseRules } from "@/components/house-rules";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { getEvent } from "@/lib/events";
+import { getHouseRulesForSpace } from "@/lib/spaces";
 import { formatDate, formatTimeRange } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Event details · ALongTable" };
@@ -29,6 +31,7 @@ export default function EventPage({ params }: PageProps<"/events/[id]">) {
 async function EventDetails({ id }: { id: string }) {
   const event = await getEvent(id);
   if (!event) notFound();
+  const houseRules = await getHouseRulesForSpace(event.spaceId);
 
   // Reading the clock is request-time work under Cache Components.
   await connection();
@@ -83,6 +86,8 @@ async function EventDetails({ id }: { id: string }) {
           </>
         )}
       </dl>
+
+      <HouseRules rules={houseRules} className="mt-6" />
 
       <div className="mt-8">
         {past ? (

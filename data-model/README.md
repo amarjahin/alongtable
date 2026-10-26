@@ -25,11 +25,14 @@ UUID primary keys. Foreign keys use `on delete cascade`.
 | `photo_url` | `text`, nullable. Public URL of the restaurant's photo in the `restaurant-photos` storage bucket |
 | `lat` | `double precision`, nullable. Map pin latitude |
 | `lng` | `double precision`, nullable. Map pin longitude |
+| `house_rules` | `text`, nullable, at most 600 characters. One rule per line, e.g. "No outside food or drinks". Set during sign-up |
 | `created_at` | `timestamptz` not null, `default now()` |
 
 Unique index on `(lower(trim(name)), lower(trim(location)))`. `lat` and `lng` are both null or both set, within valid ranges.
 
 Coordinates put the restaurant on the `/events` map. Sign-up from a Google Maps link uses the link's pin; manual sign-up geocodes the location with OpenStreetMap Nominatim. A restaurant without coordinates is simply missing from the map, never from the list. Migration for an existing database: `supabase/add-coordinates.sql` (after `add-photos.sql`).
+
+House rules show as chips on the space and event pages, so hosts and guests know them before they book or join. Migration for an existing database: `supabase/add-house-rules.sql`. Until it has run, sign-up skips saving rules and the pages show none.
 
 Photos for restaurants and events live in one public Storage bucket, `photos`, created by `schema.sql` (5 MB limit, JPEG, PNG or WebP), in folders `restaurants/<id>/` and `events/<id>/`. The server uploads with the service role key and saves the URL on the row.
 

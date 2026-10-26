@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { HouseRules } from "@/components/house-rules";
 import { ButtonLink } from "@/components/ui/button";
-import { getSpace } from "@/lib/spaces";
+import { getHouseRulesForSpace, getSpace } from "@/lib/spaces";
 import { formatDate, formatTimeRange } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Space details · ALongTable" };
@@ -25,7 +26,7 @@ export default function SpacePage({ params }: PageProps<"/spaces/[id]">) {
 }
 
 async function SpaceDetails({ id }: { id: string }) {
-  const space = await getSpace(id);
+  const [space, houseRules] = await Promise.all([getSpace(id), getHouseRulesForSpace(id)]);
   if (!space) notFound();
 
   // Reading the clock is request-time work under Cache Components.
@@ -57,6 +58,8 @@ async function SpaceDetails({ id }: { id: string }) {
       </dl>
 
       {space.description && <p className="mt-6 whitespace-pre-line text-sm">{space.description}</p>}
+
+      <HouseRules rules={houseRules} className="mt-6" />
 
       <div className="mt-8">
         {bookable ? (

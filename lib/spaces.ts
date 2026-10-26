@@ -1,4 +1,5 @@
 import "server-only";
+import { parseHouseRules, serializeHouseRules } from "@/lib/house-rules";
 import { supabase } from "@/lib/supabase";
 
 export type Space = {
@@ -219,7 +220,7 @@ function escapeLike(s: string): string {
 // details simply signs the restaurant back in.
 // ---------------------------------------------------------------------------
 
-export type Restaurant = { id: string; name: string; location: string; photoUrl: string | null };
+export type Restaurant = { id: string; name: string; location: string; photoUrl: string | null; houseRules: string[] };
 
 type RestaurantRow = {
   id: string;
@@ -228,6 +229,7 @@ type RestaurantRow = {
   photo_url?: string | null;
   lat?: number | null; // absent until supabase/add-coordinates.sql has run
   lng?: number | null;
+  house_rules?: string | null; // absent until supabase/add-house-rules.sql has run
 };
 
 export async function getRestaurant(id: string): Promise<Restaurant | null> {
@@ -240,7 +242,23 @@ export async function getRestaurant(id: string): Promise<Restaurant | null> {
     .returns<RestaurantRow[]>()
     .maybeSingle();
   if (error) throw new Error(`getRestaurant: ${error.message}`);
-  return data ? { id: data.id, name: data.name, location: data.location, photoUrl: data.photo_url ?? null } : null;
+  return data
+    ? { id: data.id, name: data.name, location: data.location, photoUrl: data.photo_url ?? null, houseRules: parseHouseRules(data.house_rules) }
+    : null;
+}
+
+/** House rules of the restaurant that owns a space, for the space and event pages. */
+export async function getHouseRulesForSpace(spaceId: string): Promise<string[]> {
+  if (!isUuid(spaceId)) return [];
+  const { data, error } = await supabase().from("spaces").select("restaurant_id").eq("id", spaceId).maybeSingle();
+  if (error || !data) return [];
+  return (await getRestaurant(data.restaurant_id))?.houseRules ?? [];
+}
+
+/** Save the restaurant's house rules (one per line). Fails until supabase/add-house-rules.sql has been run. */
+export async function setHouseRules(id: string, rules: string[]): Promise<void> {
+  const { error } = await supabase().from("restaurants").update({ house_rules: serializeHouseRules(rules) }).eq("id", id);
+  if (error) throw new Error(`setHouseRules: ${error.message}`);
 }
 
 /** Save the restaurant's photo URL. Fails until supabase/add-photos.sql has been run. */

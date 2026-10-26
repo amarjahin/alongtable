@@ -16,6 +16,7 @@ create table restaurants (
   photo_url   text,
   lat         double precision,
   lng         double precision,
+  house_rules text check (char_length(house_rules) <= 600),
   created_at  timestamptz not null default now(),
   check ((lat is null and lng is null) or (lat is not null and lng is not null and lat between -90 and 90 and lng between -180 and 180))
 );
